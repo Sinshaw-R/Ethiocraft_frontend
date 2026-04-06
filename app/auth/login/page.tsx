@@ -1,0 +1,182 @@
+
+"use client";
+import { FormEvent, useEffect, useState } from 'react';
+import { Header } from '@/components/shared/header';
+import { Footer } from '@/components/shared/footer';
+
+export default function App() {
+  const [isReady, setIsReady] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+
+  useEffect(() => {
+    setIsReady(true);
+  }, []);
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setErrorMessage('');
+    setIsLoading(true);
+
+    // Placeholder sign-in flow for demo usage.
+    window.setTimeout(() => {
+      setIsLoading(false);
+      if (!email || !password) {
+        setErrorMessage('Please enter both email and password.');
+        return;
+      }
+      console.log('Sign in', { email, password });
+    }, 800);
+  };
+
+  return (
+    <div className="min-h-screen bg-[#FAFAF9] text-[#1C1C1C] font-inter">
+      <Header />
+      <main className="grid min-h-[calc(100vh-80px)] grid-cols-1 md:grid-cols-2 pt-20 md:pt-24 items-start">
+        <section className="sticky top-24 hidden h-[calc(100vh-6rem)] overflow-hidden md:block">
+          <img
+            src="https://images.unsplash.com/photo-1576678927484-cc907957088c?auto=format&fit=crop&w=1600&q=80"
+            alt="Ethiopian artisan crafting textiles"
+            className="h-full w-full object-cover auth-zoom"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/30 to-transparent" />
+          <div className="absolute bottom-10 left-10 max-w-[32ch] text-[#FAFAF9]">
+            <h1
+              className="font-druk-medium text-4xl uppercase tracking-[0.03em]"
+            >
+              Craft Meets Modern Living
+            </h1>
+            <p className="mt-4 text-sm leading-relaxed text-[#ece7de]">
+              Authentic Ethiopian pieces, thoughtfully crafted
+            </p>
+          </div>
+        </section>
+
+        <section className="flex items-center px-6 py-12 sm:px-10 md:px-14 lg:px-20">
+          <div
+            className="w-full max-w-[440px]"
+            style={{
+              opacity: isReady ? 1 : 0,
+              transform: isReady ? 'translateY(0)' : 'translateY(14px)',
+              transition: 'opacity 450ms ease, transform 450ms ease',
+            }}
+          >
+            <div
+              className="font-aeonik inline-flex h-9 w-9 items-center justify-center border border-[#d9d2c7] text-sm"
+            >
+              E
+            </div>
+
+            <h2
+              className="font-druk-medium mt-6 text-3xl uppercase tracking-[0.04em] md:text-4xl"
+            >
+              Welcome Back
+            </h2>
+            <p className="mt-3 text-sm text-[#5d564b]">Sign in to continue</p>
+
+            <form className="mt-10 space-y-6" onSubmit={handleSubmit}>
+              <label
+                className="block text-sm"
+                style={{
+                  opacity: isReady ? 1 : 0,
+                  transform: isReady ? 'translateY(0)' : 'translateY(10px)',
+                  transition: 'opacity 420ms ease 70ms, transform 420ms ease 70ms',
+                }}
+              >
+                <span className="mb-2 block text-[#6a645a]">Email</span>
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  className="w-full border-0 border-b border-[#ddd6c9] bg-transparent px-0 py-2 text-[15px] outline-none transition-colors duration-300 placeholder:text-[#b3ab9f] focus:border-[#C6A75E]"
+                  placeholder="you@example.com"
+                />
+              </label>
+
+              <div
+                style={{
+                  opacity: isReady ? 1 : 0,
+                  transform: isReady ? 'translateY(0)' : 'translateY(10px)',
+                  transition: 'opacity 420ms ease 130ms, transform 420ms ease 130ms',
+                }}
+              >
+                <div className="mb-2 flex items-center justify-between text-sm">
+                  <label htmlFor="password" className="text-[#6a645a]">
+                    Password
+                  </label>
+                  <a href="#" className="text-xs text-[#7a7368] transition-colors hover:text-[#C6A75E]">
+                    Forgot password?
+                  </a>
+                </div>
+                <input
+                  id="password"
+                  type="password"
+                  required
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  className="w-full border-0 border-b border-[#ddd6c9] bg-transparent px-0 py-2 text-[15px] outline-none transition-colors duration-300 placeholder:text-[#b3ab9f] focus:border-[#C6A75E]"
+                  placeholder="Enter your password"
+                />
+              </div>
+
+              {errorMessage && (
+                <p className="font-aeonik text-sm text-[#9e4a45]">
+                  {errorMessage}
+                </p>
+              )}
+
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="font-aeonik mt-2 w-full bg-[#1C1C1C] px-4 py-3 text-sm text-[#FAFAF9] transition-all duration-300 hover:-translate-y-[1px] hover:opacity-90 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-75"
+              >
+                {isLoading ? 'Signing in...' : 'Sign In'}
+              </button>
+
+              <button
+                type="button"
+                className="font-aeonik w-full border border-[#dfd8cb] px-4 py-3 text-sm transition-colors duration-300 hover:bg-[#f2eee6]"
+              >
+                Continue with Google
+              </button>
+            </form>
+
+            <p className="mt-6 text-sm text-[#5d564b]">
+              Don&apos;t have an account?{' '}
+              <a href="/auth/register" className="underline decoration-[#d2c7b5] underline-offset-4 hover:text-[#1C1C1C]">
+                Sign up
+              </a>
+            </p>
+
+            <div className="mt-10 border-t border-[#e8e1d4] pt-6 text-sm text-[#6a645a]">
+              Are you an artisan?{' '}
+              <a
+                href="/auth/register/artisan"
+                className="font-aeonik group inline-flex items-center gap-1 text-[#C6A75E] transition-colors hover:text-[#b1924e]"
+              >
+                Start selling your craft
+                <span className="transition-transform duration-300 group-hover:translate-x-1">→</span>
+              </a>
+            </div>
+          </div>
+        </section>
+      </main>
+      <Footer />
+
+      <style jsx>{`
+        .font-druk-medium {
+          font-family: var(--font-druk-medium), sans-serif;
+        }
+        .font-aeonik {
+          font-family: var(--font-aeonik), sans-serif;
+        }
+        .font-inter {
+          font-family: var(--font-inter), sans-serif;
+        }
+      `}</style>
+    </div>
+  );
+}

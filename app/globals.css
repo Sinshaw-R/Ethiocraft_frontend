@@ -1,0 +1,103 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family: var(--font-inter), Arial, Helvetica, sans-serif;
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+@layer base {
+  :root {
+    /* Light mode - Ethiopian Handcrafts Aesthetic */
+    /* Base colors */
+    --background: 40 8% 98%;
+    --foreground: 0 0% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 11%;
+    /* Primary: Deep coffee brown (#3E2723) */
+    --primary: 14 25% 20%;
+    --primary-foreground: 0 0% 100%;
+    /* Secondary: Muted gold (#C6A75E) */
+    --secondary: 32 42% 56%;
+    --secondary-foreground: 0 0% 11%;
+    /* Muted colors */
+    --muted: 0 0% 92%;
+    --muted-foreground: 0 0% 45%;
+    /* Accent: Muted gold for highlights */
+    --accent: 32 42% 56%;
+    --accent-foreground: 0 0% 11%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    /* Subtle borders */
+    --border: 0 0% 88%;
+    --input: 0 0% 96%;
+    --ring: 32 42% 56%;
+    --chart-1: 14 25% 20%;
+    --chart-2: 32 42% 56%;
+    --chart-3: 25 20% 35%;
+    --chart-4: 0 0% 60%;
+    --chart-5: 32 42% 48%;
+    --radius: 0.5rem;
+    /* Sidebar: Coffee brown */
+    --sidebar-background: 14 25% 20%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 32 42% 56%;
+    --sidebar-primary-foreground: 14 25% 20%;
+    --sidebar-accent: 32 42% 56%;
+    --sidebar-accent-foreground: 14 25% 20%;
+    --sidebar-border: 14 25% 30%;
+    --sidebar-ring: 32 42% 56%;
+  }
+  .dark {
+    /* Dark mode - Ethiopian Handcrafts Aesthetic */
+    --background: 14 25% 12%;
+    --foreground: 40 8% 95%;
+    --card: 14 25% 18%;
+    --card-foreground: 40 8% 95%;
+    --popover: 14 25% 18%;
+    --popover-foreground: 40 8% 95%;
+    --primary: 32 42% 56%;
+    --primary-foreground: 14 25% 20%;
+    --secondary: 14 25% 20%;
+    --secondary-foreground: 32 42% 56%;
+    --muted: 14 25% 28%;
+    --muted-foreground: 40 8% 75%;
+    --accent: 32 42% 56%;
+    --accent-foreground: 14 25% 20%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 14 25% 25%;
+    --input: 14 25% 22%;
+    --ring: 32 42% 56%;
+    --chart-1: 32 42% 56%;
+    --chart-2: 14 25% 28%;
+    --chart-3: 40 8% 60%;
+    --chart-4: 32 42% 48%;
+    --chart-5: 14 25% 35%;
+    --sidebar-background: 14 25% 14%;
+    --sidebar-foreground: 40 8% 98%;
+    --sidebar-primary: 32 42% 56%;
+    --sidebar-primary-foreground: 14 25% 20%;
+    --sidebar-accent: 32 42% 56%;
+    --sidebar-accent-foreground: 14 25% 20%;
+    --sidebar-border: 14 25% 22%;
+    --sidebar-ring: 32 42% 56%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}

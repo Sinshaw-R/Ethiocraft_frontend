@@ -141,13 +141,13 @@ export function Header() {
             <nav className="hidden md:flex items-center gap-8 absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
               <Link 
                 href="/products" 
-                className={`text-[10px] lg:text-xs font-bold uppercase tracking-[0.2em] transition-colors hover:text-secondary ${textColor}`}
+                className={`font-aeonik text-[10px] lg:text-xs font-bold uppercase tracking-[0.2em] transition-colors hover:text-secondary ${textColor}`}
               >
                 Category
               </Link>
               <button
                 onClick={handleSearchClick}
-                className={`text-[10px] lg:text-xs font-bold uppercase tracking-[0.2em] transition-colors hover:text-secondary ${textColor}`}
+                className={`font-aeonik text-[10px] lg:text-xs font-bold uppercase tracking-[0.2em] transition-colors hover:text-secondary ${textColor}`}
               >
                 Search
               </button>
@@ -160,18 +160,18 @@ export function Header() {
               <div className="hidden md:flex items-center gap-2">
                 <Link 
                   href="/about" 
-                  className={`px-3 text-xs font-bold uppercase tracking-widest transition-colors hover:text-secondary ${textColor}`}
+                  className={`font-aeonik px-3 text-xs font-bold uppercase tracking-widest transition-colors hover:text-secondary ${textColor}`}
                 >
                   About
                 </Link>
                 <Link 
                   href="/contact" 
-                  className={`px-3 text-xs font-bold uppercase tracking-widest transition-colors hover:text-secondary ${textColor}`}
+                  className={`font-aeonik px-3 text-xs font-bold uppercase tracking-widest transition-colors hover:text-secondary ${textColor}`}
                 >
                   Contact
                 </Link>
                 <Link href="/auth/login">
-                  <Button variant="outline" className={`transition-colors border-current ${textColor} uppercase  bg-transparent hover:bg-[#FAFAF9]/20`}>
+                  <Button variant="outline" className={`font-aeonik transition-colors border-current ${textColor} uppercase tracking-widest bg-transparent hover:bg-[#FAFAF9]/20`}>
                     sign in
                   </Button>
                 </Link>

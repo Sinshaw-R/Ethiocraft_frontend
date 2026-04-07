@@ -65,15 +65,15 @@ export default function CustomerDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col font-inter">
       <Header />
 
       <main className="flex-1">
-        <div className="container mx-auto px-4 py-8">
+        <div className="container mx-auto px-4 pt-32 pb-12">
           {/* Welcome Section */}
           <div className="mb-8">
-            <h1 className="text-3xl md:text-4xl font-bold mb-2">Welcome back, Customer!</h1>
-            <p className="text-muted-foreground">Manage your orders, wishlist, and account settings</p>
+            <h1 className="font-druk-medium text-3xl md:text-4xl uppercase tracking-tight mb-2">Welcome back</h1>
+            <p className="text-muted-foreground text-sm font-aeonik uppercase tracking-widest">Manage your orders, wishlist, and account settings</p>
           </div>
 
           {/* Quick Stats */}
@@ -128,9 +128,9 @@ export default function CustomerDashboard() {
           </div>
 
           {/* Tabs */}
-          <Tabs defaultValue="orders" className="w-full">
+          <Tabs defaultValue="orders" className="w-full font-aeonik">
             <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="orders">Recent Orders</TabsTrigger>
+              <TabsTrigger value="orders" className="uppercase tracking-widest text-xs">Recent Orders</TabsTrigger>
               <TabsTrigger value="wishlist">Wishlist</TabsTrigger>
               <TabsTrigger value="account">Account</TabsTrigger>
             </TabsList>
@@ -245,6 +245,11 @@ export default function CustomerDashboard() {
       </main>
 
       <Footer />
+      <style jsx>{`
+        .font-druk-medium { font-family: var(--font-druk-medium), sans-serif; }
+        .font-aeonik { font-family: var(--font-aeonik), sans-serif; }
+        .font-inter { font-family: var(--font-inter), sans-serif; }
+      `}</style>
     </div>
   )
 }

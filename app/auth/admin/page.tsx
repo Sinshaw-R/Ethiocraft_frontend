@@ -48,7 +48,7 @@ export default function AdminLoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col font-inter">
       <Header />
 
       <main className="flex-1 flex items-center justify-center py-12 px-4">
@@ -59,7 +59,7 @@ export default function AdminLoginPage() {
               <div className="w-12 h-12 bg-primary rounded-full flex items-center justify-center mx-auto mb-4">
                 <Shield className="w-6 h-6 text-primary-foreground" />
               </div>
-              <h1 className="text-2xl font-bold mb-2">Staff & Admin Portal</h1>
+              <h1 className="text-2xl font-bold mb-2 font-druk-medium uppercase tracking-tight">Staff & Admin Portal</h1>
               <p className="text-muted-foreground text-sm">Secure login for authorized personnel</p>
             </div>
 
@@ -81,13 +81,13 @@ export default function AdminLoginPage() {
 
             {/* Role Selection */}
             <div className="mb-6">
-              <Label className="text-sm font-semibold mb-3 block">I am a:</Label>
+              <Label className="text-sm font-semibold mb-3 block font-aeonik">I am a:</Label>
               <div className="grid grid-cols-2 gap-2">
                 {(['agent', 'admin'] as const).map((r) => (
                   <button
                     key={r}
                     onClick={() => setRole(r)}
-                    className={`p-3 rounded-lg border-2 text-sm font-medium transition capitalize ${
+                    className={`p-3 rounded-lg border-2 text-sm font-medium transition capitalize font-aeonik ${
                       role === r
                         ? 'border-primary bg-primary/10 text-primary'
                         : 'border-border hover:border-primary/50'
@@ -103,7 +103,7 @@ export default function AdminLoginPage() {
             <form onSubmit={handleLogin} className="space-y-4">
               {/* Email */}
               <div className="space-y-2">
-                <Label htmlFor="email">Email Address</Label>
+                <Label htmlFor="email" className="font-aeonik">Email Address</Label>
                 <Input
                   id="email"
                   type="email"
@@ -116,7 +116,7 @@ export default function AdminLoginPage() {
 
               {/* Employee ID */}
               <div className="space-y-2">
-                <Label htmlFor="employeeId">Employee ID</Label>
+                <Label htmlFor="employeeId" className="font-aeonik">Employee ID</Label>
                 <Input
                   id="employeeId"
                   type="text"
@@ -130,7 +130,7 @@ export default function AdminLoginPage() {
               {/* Password */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="password">Password</Label>
+                  <Label htmlFor="password" className="font-aeonik">Password</Label>
                   <Link href="#" className="text-xs text-primary hover:underline">
                     Forgot password?
                   </Link>
@@ -146,7 +146,7 @@ export default function AdminLoginPage() {
               </div>
 
               {/* Submit Button */}
-              <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground" disabled={isLoading}>
+              <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-aeonik" disabled={isLoading}>
                 {isLoading ? 'Verifying credentials...' : 'Access Portal'}
               </Button>
             </form>
@@ -163,10 +163,10 @@ export default function AdminLoginPage() {
 
             {/* SSO Login */}
             <div className="grid grid-cols-2 gap-3">
-              <Button variant="outline" className="w-full bg-transparent">
+              <Button variant="outline" className="w-full bg-transparent font-aeonik">
                 Microsoft SSO
               </Button>
-              <Button variant="outline" className="w-full bg-transparent">
+              <Button variant="outline" className="w-full bg-transparent font-aeonik">
                 Google SSO
               </Button>
             </div>
@@ -188,6 +188,11 @@ export default function AdminLoginPage() {
       </main>
 
       <Footer />
+      <style jsx>{`
+        .font-druk-medium { font-family: var(--font-druk-medium), sans-serif; }
+        .font-aeonik { font-family: var(--font-aeonik), sans-serif; }
+        .font-inter { font-family: var(--font-inter), sans-serif; }
+      `}</style>
     </div>
   )
 }

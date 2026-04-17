@@ -150,7 +150,7 @@ export default function Home() {
                     />
                   </div>
                   <div className="p-6 flex flex-col flex-1">
-                    <h3 className="font-aeonik tracking-wide uppercase text-xl mb-3 group-hover:text-secondary transition-colors">{cat.name}</h3>
+                    <h3 className="font-druk-medium tracking-wide uppercase text-xl mb-3 group-hover:text-secondary transition-colors">{cat.name}</h3>
                     <p className="text-muted-foreground text-sm leading-relaxed line-clamp-2 mb-6 flex-1">
                       {cat.description}
                     </p>
@@ -195,7 +195,7 @@ export default function Home() {
                   {/* Product Info */}
                   <div className="p-4">
                     <p className="text-sm text-muted-foreground mb-2">{product.category}</p>
-                    <h3 className="font-semibold font-aeonik text-lg mb-2 line-clamp-2">{product.name}</h3>
+                    <h3 className="font-semibold font-druk-medium text-lg mb-2 line-clamp-2 uppercase tracking-tight">{product.name}</h3>
 
                     {/* Rating */}
                     <div className="flex items-center gap-1 mb-3">

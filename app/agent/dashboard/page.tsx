@@ -102,15 +102,15 @@ export default function AgentDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col font-inter">
       <Header />
 
       <main className="flex-1">
         <div className="container mx-auto px-4 py-8">
           {/* Welcome Section */}
           <div className="mb-8">
-            <h1 className="text-3xl md:text-4xl font-bold mb-2">Agent Dashboard</h1>
-            <p className="text-muted-foreground">Manage verification tasks and shipment logistics</p>
+            <h1 className="font-druk-medium text-3xl md:text-4xl uppercase tracking-[0.04em] mb-2">Agent Dashboard</h1>
+            <p className="font-inter text-muted-foreground">Manage verification tasks and shipment logistics</p>
           </div>
 
           {/* Task Stats */}
@@ -121,8 +121,8 @@ export default function AgentDashboard() {
                 <Card key={i} className="p-6">
                   <div className="flex items-start justify-between">
                     <div>
-                      <p className="text-sm text-muted-foreground mb-1">{stat.title}</p>
-                      <p className="text-2xl font-bold">{stat.value}</p>
+                      <p className="font-aeonik text-xs uppercase tracking-[0.14em] text-muted-foreground mb-1">{stat.title}</p>
+                      <p className="font-druk-medium text-2xl">{stat.value}</p>
                     </div>
                     <Icon className="w-8 h-8 text-secondary opacity-20" />
                   </div>
@@ -134,23 +134,23 @@ export default function AgentDashboard() {
           {/* Tabs */}
           <Tabs defaultValue="verification" className="w-full">
             <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="verification">Verification Tasks</TabsTrigger>
-              <TabsTrigger value="shipments">Shipments</TabsTrigger>
-              <TabsTrigger value="reports">My Reports</TabsTrigger>
+              <TabsTrigger value="verification" className="font-aeonik text-xs uppercase tracking-[0.12em]">Verification Tasks</TabsTrigger>
+              <TabsTrigger value="shipments" className="font-aeonik text-xs uppercase tracking-[0.12em]">Shipments</TabsTrigger>
+              <TabsTrigger value="reports" className="font-aeonik text-xs uppercase tracking-[0.12em]">My Reports</TabsTrigger>
             </TabsList>
 
             {/* Verification Tasks Tab */}
             <TabsContent value="verification" className="space-y-4">
-              <h2 className="text-xl font-semibold mb-4">Verification Tasks</h2>
+              <h2 className="font-aeonik text-lg uppercase tracking-[0.12em] font-bold mb-4">Verification Tasks</h2>
 
               <div className="space-y-3">
                 {verificationTasks.map((task) => (
                   <Card key={task.id} className="p-4">
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                       <div>
-                        <Badge className="mb-2 bg-primary/20 text-primary">{task.type}</Badge>
-                        <p className="font-semibold">{task.name}</p>
-                        <p className="text-sm text-muted-foreground">{task.date}</p>
+                        <Badge className="font-aeonik mb-2 bg-primary/20 text-primary">{task.type}</Badge>
+                        <p className="font-inter font-semibold">{task.name}</p>
+                        <p className="font-inter text-sm text-muted-foreground">{task.date}</p>
                       </div>
                       <div className="flex items-center gap-3">
                         <Badge className={getStatusColor(task.status)}>{task.status}</Badge>
@@ -174,7 +174,7 @@ export default function AgentDashboard() {
             {/* Shipments Tab */}
             <TabsContent value="shipments" className="space-y-4">
               <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-semibold">Shipment Tracking</h2>
+                <h2 className="font-aeonik text-lg uppercase tracking-[0.12em] font-bold">Shipment Tracking</h2>
                 <Link href="/agent/shipments">
                   <Button variant="outline">View All</Button>
                 </Link>
@@ -184,13 +184,13 @@ export default function AgentDashboard() {
                 <table className="w-full">
                   <thead className="border-b border-border">
                     <tr>
-                      <th className="text-left py-3 px-4 font-semibold">Shipment ID</th>
-                      <th className="text-left py-3 px-4 font-semibold">Order</th>
-                      <th className="text-left py-3 px-4 font-semibold">Customer</th>
-                      <th className="text-left py-3 px-4 font-semibold">Destination</th>
-                      <th className="text-left py-3 px-4 font-semibold">Status</th>
-                      <th className="text-left py-3 px-4 font-semibold">Date</th>
-                      <th className="text-left py-3 px-4 font-semibold">Action</th>
+                      <th className="font-aeonik text-left text-xs uppercase tracking-[0.12em] py-3 px-4">Shipment ID</th>
+                      <th className="font-aeonik text-left text-xs uppercase tracking-[0.12em] py-3 px-4">Order</th>
+                      <th className="font-aeonik text-left text-xs uppercase tracking-[0.12em] py-3 px-4">Customer</th>
+                      <th className="font-aeonik text-left text-xs uppercase tracking-[0.12em] py-3 px-4">Destination</th>
+                      <th className="font-aeonik text-left text-xs uppercase tracking-[0.12em] py-3 px-4">Status</th>
+                      <th className="font-aeonik text-left text-xs uppercase tracking-[0.12em] py-3 px-4">Date</th>
+                      <th className="font-aeonik text-left text-xs uppercase tracking-[0.12em] py-3 px-4">Action</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -220,34 +220,34 @@ export default function AgentDashboard() {
 
             {/* Reports Tab */}
             <TabsContent value="reports" className="space-y-4">
-              <h2 className="text-xl font-semibold mb-4">My Reports</h2>
+              <h2 className="font-aeonik text-lg uppercase tracking-[0.12em] font-bold mb-4">My Reports</h2>
 
               <Card className="p-6">
                 <div className="space-y-4">
                   <div>
-                    <p className="text-sm text-muted-foreground mb-1">This Month Performance</p>
+                    <p className="font-aeonik text-xs uppercase tracking-[0.12em] text-muted-foreground mb-1">This Month Performance</p>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       <div>
-                        <p className="font-semibold">45</p>
-                        <p className="text-xs text-muted-foreground">Verifications Done</p>
+                        <p className="font-druk-medium text-xl">45</p>
+                        <p className="font-inter text-xs text-muted-foreground">Verifications Done</p>
                       </div>
                       <div>
-                        <p className="font-semibold">98%</p>
-                        <p className="text-xs text-muted-foreground">Accuracy Rate</p>
+                        <p className="font-druk-medium text-xl">98%</p>
+                        <p className="font-inter text-xs text-muted-foreground">Accuracy Rate</p>
                       </div>
                       <div>
-                        <p className="font-semibold">156</p>
-                        <p className="text-xs text-muted-foreground">Shipments Tracked</p>
+                        <p className="font-druk-medium text-xl">156</p>
+                        <p className="font-inter text-xs text-muted-foreground">Shipments Tracked</p>
                       </div>
                       <div>
-                        <p className="font-semibold">2.1d</p>
-                        <p className="text-xs text-muted-foreground">Avg Response Time</p>
+                        <p className="font-druk-medium text-xl">2.1d</p>
+                        <p className="font-inter text-xs text-muted-foreground">Avg Response Time</p>
                       </div>
                     </div>
                   </div>
 
                   <div className="border-t border-border pt-4">
-                    <h3 className="font-semibold mb-3">Recent Actions</h3>
+                    <h3 className="font-aeonik text-xs uppercase tracking-[0.12em] font-bold mb-3">Recent Actions</h3>
                     <div className="space-y-2 text-sm">
                       <p className="text-muted-foreground">• Verified Artisan: Bekele Wolde - Dec 16</p>
                       <p className="text-muted-foreground">• Updated Shipment: SHP-001 - Dec 15</p>
@@ -266,6 +266,12 @@ export default function AgentDashboard() {
       </main>
 
       <Footer />
+
+      <style jsx>{`
+        .font-druk-medium { font-family: var(--font-druk-medium), sans-serif; }
+        .font-aeonik      { font-family: var(--font-aeonik), sans-serif; }
+        .font-inter       { font-family: var(--font-inter), sans-serif; }
+      `}</style>
     </div>
   )
 }

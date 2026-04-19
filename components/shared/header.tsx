@@ -1,13 +1,24 @@
 'use client'
 
 import Link from 'next/link'
-import { ShoppingCart, Search, Menu, X } from 'lucide-react'
+import { ShoppingCart, Search, Menu, X, UserCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useState, useEffect, useRef } from 'react'
 import { gsap } from 'gsap'
 import { useHeader } from '@/lib/header-context'
 import { Separator } from '@/components/ui/separator'
+import { useAuth } from '@/lib/auth-context'
+
+/** Returns the dashboard URL for the currently logged-in role. */
+function dashboardForRole(role: string | null): string {
+  switch (role?.toUpperCase()) {
+    case 'ADMIN':   return '/admin/dashboard'
+    case 'AGENT':   return '/agent/dashboard'
+    case 'ARTISAN': return '/artisan/dashboard'
+    default:        return '/customer/dashboard'
+  }
+}
 
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -18,6 +29,8 @@ export function Header() {
   const searchBarRef = useRef<HTMLDivElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const { setIsHovered: setGlobalIsHovered } = useHeader()
+  const { token, role } = useAuth()
+  const isLoggedIn = Boolean(token)
 
   useEffect(() => {
     const hero = document.getElementById('hero')
@@ -170,11 +183,21 @@ export function Header() {
                 >
                   Contact
                 </Link>
-                <Link href="/auth/login">
-                  <Button variant="outline" className={`font-aeonik transition-colors border-current ${textColor} uppercase tracking-widest bg-transparent hover:bg-[#FAFAF9]/20`}>
-                    sign in
-                  </Button>
-                </Link>
+                {isLoggedIn ? (
+                  <Link
+                    href={dashboardForRole(role)}
+                    aria-label="My account"
+                    className={`transition-colors ${textColor} hover:text-secondary`}
+                  >
+                    <UserCircle className="w-6 h-6" />
+                  </Link>
+                ) : (
+                  <Link href="/auth/login">
+                    <Button variant="outline" className={`font-aeonik transition-colors border-current ${textColor} uppercase tracking-widest bg-transparent hover:bg-[#FAFAF9]/20`}>
+                      sign in
+                    </Button>
+                  </Link>
+                )}
                 <Link href="/cart">
                 <Button
                   variant="ghost"
@@ -231,14 +254,25 @@ export function Header() {
                     Contact
                   </Link>
                   <Separator className="bg-current opacity-10" />
-                  <Link href="/auth/login" className="w-full">
-                    <Button
-                      variant="outline"
-                      className={`w-full transition-colors border-current ${textColor} bg-transparent hover:bg-[#FAFAF9]/20`}
+                  {isLoggedIn ? (
+                    <Link
+                      href={dashboardForRole(role)}
+                      className={`flex items-center gap-2 text-xs font-bold uppercase tracking-widest ${textColor}`}
+                      onClick={() => setIsMenuOpen(false)}
                     >
-                      sign in
-                    </Button>
-                  </Link>
+                      <UserCircle className="w-5 h-5" />
+                      My Account
+                    </Link>
+                  ) : (
+                    <Link href="/auth/login" className="w-full">
+                      <Button
+                        variant="outline"
+                        className={`w-full transition-colors border-current ${textColor} bg-transparent hover:bg-[#FAFAF9]/20`}
+                      >
+                        sign in
+                      </Button>
+                    </Link>
+                  )}
                 </div>
               </div>
             )}

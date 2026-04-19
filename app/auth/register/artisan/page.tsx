@@ -1,6 +1,10 @@
 
 "use client";
-import { ChangeEvent, useMemo, useState } from 'react';
+import { ChangeEvent, useMemo, useRef, useState } from 'react';
+const BaseUrl = "http://localhost:4000/api/v1";
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
 
 type StepIndex = 1 | 2 | 3 | 4 | 5;
 
@@ -15,15 +19,38 @@ type FormState = {
   city: string;
   technique: string;
   culturalSignificance: string;
+  /** Blob-URL strings used only for <img> preview — NOT sent to the API */
   profileImage: string;
   coverImage: string;
   sampleImages: string[];
 };
 
+/**
+ * Holds the actual File objects that will be sent via FormData.
+ * Kept separate so we never mutate FormState or change any preview logic.
+ */
+type FileState = {
+  profileImageFile: File | null;
+  coverImageFile: File | null;
+  sampleImageFiles: File[];
+};
+
+type SubmitPhase =
+  | 'idle'
+  | 'creating-draft'
+  | 'uploading-images'
+  | 'submitting-draft'
+  | 'done'
+  | 'error';
+
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
 const specialtyOptions = ['Weaving', 'Pottery', 'Jewelry', 'Leather', 'Embroidery', 'Other'];
 const regionOptions = ['Addis Ababa', 'Amhara', 'Oromia', 'Tigray', 'Sidama', 'SNNPR', 'Afar', 'Somali'];
 
-const initialState: FormState = {
+const initialForm: FormState = {
   fullName: 'Meron Bekele',
   shopName: '',
   shopSlug: '',
@@ -39,6 +66,16 @@ const initialState: FormState = {
   sampleImages: [],
 };
 
+const initialFiles: FileState = {
+  profileImageFile: null,
+  coverImageFile: null,
+  sampleImageFiles: [],
+};
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
 function createSlug(value: string): string {
   return value
     .toLowerCase()
@@ -48,15 +85,125 @@ function createSlug(value: string): string {
     .replace(/-+/g, '-');
 }
 
+/** Returns the user-facing label for each submit phase. */
+function phaseLabel(phase: SubmitPhase): string {
+  switch (phase) {
+    case 'creating-draft': return 'Creating draft…';
+    case 'uploading-images': return 'Uploading images…';
+    case 'submitting-draft': return 'Submitting for verification…';
+    default: return 'Submit for Verification';
+  }
+}
+
+/** Retrieves the stored auth token. Adjust the key to match your auth setup. */
+function getAuthToken(): string | null {
+  if (typeof window === 'undefined') return "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjbW1rbzNxMHowMDAza3Ric3AyYjlremFyIiwicm9sZSI6IkNVU1RPTUVSIiwiZW1haWwiOiJjdXN0b21lckBldGhpb2NyYWZ0LmNvbSIsImlhdCI6MTc3NjUzODA3NywiZXhwIjoxNzc2NjI0NDc3fQ.l_xOTaJCFKhpOJQU3KB9ShBZ737J0QKSY3R5dY1-7HM";
+  return "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjbW1rbzNxMHowMDAza3Ric3AyYjlremFyIiwicm9sZSI6IkNVU1RPTUVSIiwiZW1haWwiOiJjdXN0b21lckBldGhpb2NyYWZ0LmNvbSIsImlhdCI6MTc3NjUzODA3NywiZXhwIjoxNzc2NjI0NDc3fQ.l_xOTaJCFKhpOJQU3KB9ShBZ737J0QKSY3R5dY1-7HM"
+  //localStorage.getItem('token') ?? sessionStorage.getItem('token');
+}
+
+// ---------------------------------------------------------------------------
+// API helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Step 1 — Create a product draft with JSON data.
+ * POST /artisan/products/drafts
+ */
+async function createProductDraft(payload: Record<string, unknown>, token: string): Promise<string> {
+  const res = await fetch(`${BaseUrl}/artisan/products/drafts`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => res.statusText);
+    throw new Error(`Draft creation failed (${res.status}): ${text}`);
+  }
+
+  const json = await res.json();
+  // The API wraps the draft in a { data: { ... }, message: "..." } envelope
+  const draft = json?.data ?? json;
+  const draftId: string | undefined = draft?.draftId ?? draft?.id ?? draft?.draft?.id;
+
+  if (!draftId) {
+    console.log("No draftId returned from server. Check the API response shape.", json);
+    throw new Error('No draftId returned from server. Check the API response shape.');
+
+  }
+
+  return draftId;
+}
+
+/**
+ * Step 2 — Upload images via multipart/form-data.
+ * POST /artisan/products/drafts/:draftId/images
+ *
+ * NOTE: Do NOT set Content-Type manually; the browser sets it automatically
+ *       with the correct boundary when using FormData.
+ */
+async function uploadDraftImages(draftId: string, files: File[], token: string): Promise<void> {
+  const formData = new FormData();
+  files.forEach((file) => formData.append('images', file));
+
+  const res = await fetch(`${BaseUrl}/artisan/products/drafts/${draftId}/images`, {
+    method: 'POST',
+    headers: {
+      // ⚠️ Content-Type is intentionally omitted so the browser can set the
+      //    multipart/form-data boundary automatically.
+      Authorization: `Bearer ${token}`,
+    },
+    body: formData,
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => res.statusText);
+    throw new Error(`Image upload failed (${res.status}): ${text}`);
+  }
+}
+
+/**
+ * Step 3 — Submit the draft for verification.
+ * POST /artisan/products/drafts/:draftId/submit
+ */
+async function submitDraftForVerification(draftId: string, token: string): Promise<void> {
+  const res = await fetch(`${BaseUrl}/artisan/products/drafts/${draftId}/submit`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => res.statusText);
+    throw new Error(`Draft submission failed (${res.status}): ${text}`);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
+
 export default function App() {
   const [step, setStep] = useState<StepIndex>(1);
   const [isAnimating, setIsAnimating] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitPhase, setSubmitPhase] = useState<SubmitPhase>('idle');
   const [isUnderReview, setIsUnderReview] = useState(false);
-  const [form, setForm] = useState<FormState>(initialState);
 
+  const [form, setForm] = useState<FormState>(initialForm);
+  const [fileState, setFileState] = useState<FileState>(initialFiles);
+
+  const isSubmitting = submitPhase !== 'idle' && submitPhase !== 'error';
   const progressPercent = useMemo(() => (step / 5) * 100, [step]);
+
+  // -------------------------------------------------------------------------
+  // Form field handlers
+  // -------------------------------------------------------------------------
 
   const updateForm = (field: keyof FormState, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -85,6 +232,11 @@ export default function App() {
     });
   };
 
+  /**
+   * Handles image selection for profile, cover, and sample images.
+   * — Stores blob URLs in FormState for <img> previews (unchanged behaviour).
+   * — Stores the actual File objects in fileState for later FormData upload.
+   */
   const handleImageUpload = (
     event: ChangeEvent<HTMLInputElement>,
     target: 'profileImage' | 'coverImage' | 'sampleImages',
@@ -93,16 +245,27 @@ export default function App() {
     if (!fileList || fileList.length === 0) return;
 
     if (target === 'sampleImages') {
-      const incomingFiles = Array.from(fileList).slice(0, 3);
-      const imageUrls = incomingFiles.map((file) => URL.createObjectURL(file));
-      setForm((prev) => ({ ...prev, sampleImages: imageUrls }));
+      const incomingFiles = Array.from(fileList).slice(0, 6); // API accepts up to 6
+      const previewUrls = incomingFiles.map((file) => URL.createObjectURL(file));
+      setForm((prev) => ({ ...prev, sampleImages: previewUrls }));
+      setFileState((prev) => ({ ...prev, sampleImageFiles: incomingFiles }));
       return;
     }
 
     const [firstFile] = fileList;
-    const imageUrl = URL.createObjectURL(firstFile);
-    setForm((prev) => ({ ...prev, [target]: imageUrl }));
+    const previewUrl = URL.createObjectURL(firstFile);
+    setForm((prev) => ({ ...prev, [target]: previewUrl }));
+
+    if (target === 'profileImage') {
+      setFileState((prev) => ({ ...prev, profileImageFile: firstFile }));
+    } else {
+      setFileState((prev) => ({ ...prev, coverImageFile: firstFile }));
+    }
   };
+
+  // -------------------------------------------------------------------------
+  // Navigation / validation
+  // -------------------------------------------------------------------------
 
   const validateStep = (): boolean => {
     const stepErrors: string[] = [];
@@ -145,12 +308,17 @@ export default function App() {
     }, 180);
   };
 
-  const handleFinalSubmit = () => {
+  // -------------------------------------------------------------------------
+  // Final submit — three-step API flow
+  // -------------------------------------------------------------------------
+
+  const handleFinalSubmit = async () => {
+    // 1. Client-side validation
     const allErrors: string[] = [];
     if (!form.shopName.trim()) allErrors.push('Shop name is required.');
     if (!form.shortBio.trim()) allErrors.push('Short bio is required.');
     if (form.specialties.length === 0) allErrors.push('Select at least one specialty.');
-    if (!form.profileImage) allErrors.push('Profile image is required.');
+    if (!fileState.profileImageFile) allErrors.push('Profile image is required.');
 
     if (allErrors.length > 0) {
       setErrors(allErrors);
@@ -158,20 +326,61 @@ export default function App() {
     }
 
     setErrors([]);
-    setIsSubmitting(true);
 
-    // Simulate profile creation payload with required verification status.
-    window.setTimeout(() => {
-      const artisanProfile = {
-        ...form,
-        verificationStatus: 'PENDING',
+    // 2. Retrieve auth token
+    const token = getAuthToken();
+    if (!token) {
+      setErrors(['You are not authenticated. Please sign in and try again.']);
+      return;
+    }
+
+    try {
+      // ── Step 1: Create draft (JSON) ────────────────────────────────────────
+      setSubmitPhase('creating-draft');
+
+      const draftPayload = {
+        title: form.shopName,        // map to your product title field
+        description: form.shortBio,
+        category: form.specialties[0],  // primary specialty as category
+        materials: form.technique ? [form.technique] : ["wood"],
+        dimensions: { "length": 10, "width": 10, "height": 10 },                   // not collected in this flow
+        price: 5000,                    // not collected in this flow
+        stock: 10,                   // not collected in this flow
+
       };
 
-      console.log('ArtisanProfile created', artisanProfile);
-      setIsSubmitting(false);
+      const draftId = await createProductDraft(draftPayload, token);
+
+      // ── Step 2: Upload images (FormData) ────────────────────────────────────
+      setSubmitPhase('uploading-images');
+
+      const imagesToUpload: File[] = [
+        ...(fileState.profileImageFile ? [fileState.profileImageFile] : []),
+        ...(fileState.coverImageFile ? [fileState.coverImageFile] : []),
+        ...fileState.sampleImageFiles,
+      ].slice(0, 6); // enforce the API's 6-image cap
+
+      if (imagesToUpload.length > 0) {
+        await uploadDraftImages(draftId, imagesToUpload, token);
+      }
+
+      // ── Step 3: Submit draft for verification ───────────────────────────────
+      setSubmitPhase('submitting-draft');
+      await submitDraftForVerification(draftId, token);
+
+      // ── Done ────────────────────────────────────────────────────────────────
+      setSubmitPhase('done');
       setIsUnderReview(true);
-    }, 900);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'An unexpected error occurred.';
+      setErrors([message]);
+      setSubmitPhase('error');
+    }
   };
+
+  // -------------------------------------------------------------------------
+  // Render — "Under Review" screen
+  // -------------------------------------------------------------------------
 
   if (isUnderReview) {
     return (
@@ -204,9 +413,14 @@ export default function App() {
     );
   }
 
+  // -------------------------------------------------------------------------
+  // Render — Main form
+  // -------------------------------------------------------------------------
+
   return (
     <div className="min-h-screen bg-[#FAFAF9] px-4 py-6 text-[#1C1C1C] md:px-10 md:py-10 font-inter">
       <main className="mx-auto flex min-h-[calc(100vh-3rem)] w-full max-w-4xl flex-col rounded-2xl border border-[#e9e3d8] bg-[#fdfcf9] p-6 md:p-10">
+        {/* Progress header */}
         <header>
           <div className="flex items-center justify-between gap-4">
             <p className="font-aeonik text-xs uppercase tracking-[0.14em] text-[#7a746b]">
@@ -221,12 +435,14 @@ export default function App() {
           </div>
         </header>
 
+        {/* Step content */}
         <section className="mt-10 flex-1">
           <div
             key={step}
             className="step-fade"
             style={{ opacity: isAnimating ? 0 : 1, transition: 'opacity 180ms ease' }}
           >
+            {/* ── Step 1: Identity ─────────────────────────────────────────── */}
             {step === 1 && (
               <>
                 <h1 className="font-druk-medium text-3xl uppercase tracking-[0.04em] md:text-4xl">
@@ -275,6 +491,7 @@ export default function App() {
               </>
             )}
 
+            {/* ── Step 2: Craft ─────────────────────────────────────────────── */}
             {step === 2 && (
               <>
                 <h1 className="font-druk-medium text-3xl uppercase tracking-[0.04em] md:text-4xl">
@@ -295,11 +512,10 @@ export default function App() {
                             key={specialty}
                             type="button"
                             onClick={() => toggleSpecialty(specialty)}
-                            className={`font-aeonik px-4 py-2 text-sm transition-all duration-300 ${
-                              selected
-                                ? 'bg-[#1C1C1C] text-[#FAFAF9]'
-                                : 'border border-[#ddd6c9] text-[#5f584f] hover:border-[#C6A75E] hover:text-[#1C1C1C]'
-                            }`}
+                            className={`font-aeonik px-4 py-2 text-sm transition-all duration-300 ${selected
+                              ? 'bg-[#1C1C1C] text-[#FAFAF9]'
+                              : 'border border-[#ddd6c9] text-[#5f584f] hover:border-[#C6A75E] hover:text-[#1C1C1C]'
+                              }`}
                           >
                             {specialty}
                           </button>
@@ -341,6 +557,7 @@ export default function App() {
               </>
             )}
 
+            {/* ── Step 3: Roots ─────────────────────────────────────────────── */}
             {step === 3 && (
               <>
                 <h1 className="font-druk-medium text-3xl uppercase tracking-[0.04em] md:text-4xl">
@@ -402,6 +619,7 @@ export default function App() {
               </>
             )}
 
+            {/* ── Step 4: Images ────────────────────────────────────────────── */}
             {step === 4 && (
               <>
                 <h1 className="font-druk-medium text-3xl uppercase tracking-[0.04em] md:text-4xl">
@@ -422,7 +640,7 @@ export default function App() {
                           className="hidden"
                           onChange={(event) => handleImageUpload(event, 'profileImage')}
                         />
-                        Drag & drop or click to upload
+                        Drag &amp; drop or click to upload
                       </label>
                       {form.profileImage && (
                         <img src={form.profileImage} alt="Profile preview" className="image-preview mt-3 h-24 w-24 object-cover" />
@@ -438,7 +656,7 @@ export default function App() {
                           className="hidden"
                           onChange={(event) => handleImageUpload(event, 'coverImage')}
                         />
-                        Drag & drop or click to upload
+                        Drag &amp; drop or click to upload
                       </label>
                       {form.coverImage && (
                         <img src={form.coverImage} alt="Cover preview" className="image-preview mt-3 h-24 w-full object-cover" />
@@ -447,7 +665,7 @@ export default function App() {
                   </div>
 
                   <label className="block">
-                    <span className="mb-2 block text-sm text-[#665f55]">Sample Product Images (1-3)</span>
+                    <span className="mb-2 block text-sm text-[#665f55]">Sample Product Images (up to 6)</span>
                     <label className="upload-dropzone block cursor-pointer border border-dashed border-[#d5cdbe] bg-[#fbf9f4] p-5 text-sm text-[#746d63] transition-colors hover:border-[#C6A75E]">
                       <input
                         type="file"
@@ -456,7 +674,7 @@ export default function App() {
                         className="hidden"
                         onChange={(event) => handleImageUpload(event, 'sampleImages')}
                       />
-                      Drag & drop or click to upload
+                      Drag &amp; drop or click to upload
                     </label>
                     {form.sampleImages.length > 0 && (
                       <div className="mt-3 grid grid-cols-3 gap-3">
@@ -475,6 +693,7 @@ export default function App() {
               </>
             )}
 
+            {/* ── Step 5: Review ────────────────────────────────────────────── */}
             {step === 5 && (
               <>
                 <h1 className="font-druk-medium text-3xl uppercase tracking-[0.04em] md:text-4xl">
@@ -514,6 +733,7 @@ export default function App() {
             )}
           </div>
 
+          {/* Error banner */}
           {errors.length > 0 && (
             <div className="mt-7 border border-[#ecd7cf] bg-[#fff6f1] p-4 text-sm text-[#8b4a40]">
               {errors.map((error) => (
@@ -523,11 +743,12 @@ export default function App() {
           )}
         </section>
 
+        {/* Navigation footer */}
         <footer className="font-aeonik mt-8 flex items-center justify-between border-t border-[#ece5d9] pt-6">
           <button
             type="button"
             onClick={goToPreviousStep}
-            disabled={step === 1}
+            disabled={step === 1 || isSubmitting}
             className="px-2 py-2 text-sm text-[#5e574d] transition-colors duration-300 hover:text-[#1C1C1C] disabled:cursor-not-allowed disabled:text-[#b0a99d]"
           >
             Back
@@ -548,7 +769,7 @@ export default function App() {
               disabled={isSubmitting}
               className="bg-[#1C1C1C] px-6 py-3 text-sm text-[#FAFAF9] transition-all duration-300 hover:-translate-y-[1px] hover:opacity-90 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-70"
             >
-              {isSubmitting ? 'Submitting...' : 'Submit for Verification'}
+              {isSubmitting ? phaseLabel(submitPhase) : 'Submit for Verification'}
             </button>
           )}
         </footer>

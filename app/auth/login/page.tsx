@@ -1,34 +1,87 @@
 
 "use client";
 import { FormEvent, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Header } from '@/components/shared/header';
 import { Footer } from '@/components/shared/footer';
+import { useAuth } from '@/lib/auth-context';
 
-export default function App() {
-  const [isReady, setIsReady] = useState(false);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:4000/api/v1';
+
+/** Maps a server role string to its dashboard path. */
+function dashboardForRole(role: string): string {
+  switch (role.toUpperCase()) {
+    case 'ADMIN':   return '/admin/dashboard';
+    case 'AGENT':   return '/agent/dashboard';
+    case 'ARTISAN': return '/artisan/dashboard';
+    default:        return '/customer/dashboard';
+  }
+}
+
+export default function LoginPage() {
+  const router = useRouter();
+  const { login } = useAuth();
+
+  const [isReady, setIsReady]           = useState(false);
+  const [email, setEmail]               = useState('');
+  const [password, setPassword]         = useState('');
+  const [isLoading, setIsLoading]       = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
-  useEffect(() => {
-    setIsReady(true);
-  }, []);
+  useEffect(() => { setIsReady(true); }, []);
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setErrorMessage('');
+
+    if (!email.trim() || !password.trim()) {
+      setErrorMessage('Please enter both email and password.');
+      return;
+    }
+
     setIsLoading(true);
 
-    // Placeholder sign-in flow for demo usage.
-    window.setTimeout(() => {
-      setIsLoading(false);
-      if (!email || !password) {
-        setErrorMessage('Please enter both email and password.');
+    try {
+      const res = await fetch(`${BASE_URL}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const json = await res.json();
+
+      if (!res.ok) {
+        const msg =
+          json?.message ??
+          json?.error ??
+          'Invalid credentials. Please try again.';
+        setErrorMessage(msg);
         return;
       }
-      console.log('Sign in', { email, password });
-    }, 800);
+
+      // ── Extract token & role ──────────────────────────────────────────────
+      // Handles both flat { token, role } and nested { data: { token, role } }
+      const payload = json?.data ?? json;
+      const token: string | undefined = payload?.token ?? payload?.accessToken;
+      const role: string = (
+        payload?.role ?? payload?.user?.role ?? 'CUSTOMER'
+      ).toUpperCase();
+
+      if (!token) {
+        setErrorMessage('Login succeeded but no token was returned. Contact support.');
+        return;
+      }
+
+      // ── Persist & update global auth state ────────────────────────────────
+      login(token, role as any);
+
+      // ── Redirect by role ──────────────────────────────────────────────────
+      router.push(dashboardForRole(role));
+    } catch {
+      setErrorMessage('Unable to reach the server. Please check your connection.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -43,9 +96,7 @@ export default function App() {
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/30 to-transparent" />
           <div className="absolute bottom-10 left-10 max-w-[32ch] text-[#FAFAF9]">
-            <h1
-              className="font-druk-medium text-4xl uppercase tracking-[0.03em]"
-            >
+            <h1 className="font-druk-medium text-4xl uppercase tracking-[0.03em]">
               Craft Meets Modern Living
             </h1>
             <p className="mt-4 text-sm leading-relaxed text-[#ece7de]">
@@ -63,15 +114,11 @@ export default function App() {
               transition: 'opacity 450ms ease, transform 450ms ease',
             }}
           >
-            <div
-              className="font-aeonik inline-flex h-9 w-9 items-center justify-center border border-[#d9d2c7] text-sm"
-            >
+            <div className="font-aeonik inline-flex h-9 w-9 items-center justify-center border border-[#d9d2c7] text-sm">
               E
             </div>
 
-            <h2
-              className="font-druk-medium mt-6 text-3xl uppercase tracking-[0.04em] md:text-4xl"
-            >
+            <h2 className="font-druk-medium mt-6 text-3xl uppercase tracking-[0.04em] md:text-4xl">
               Welcome Back
             </h2>
             <p className="mt-3 text-sm text-[#5d564b]">Sign in to continue</p>
@@ -90,7 +137,7 @@ export default function App() {
                   type="email"
                   required
                   value={email}
-                  onChange={(event) => setEmail(event.target.value)}
+                  onChange={(e) => setEmail(e.target.value)}
                   className="w-full border-0 border-b border-[#ddd6c9] bg-transparent px-0 py-2 text-[15px] outline-none transition-colors duration-300 placeholder:text-[#b3ab9f] focus:border-[#C6A75E]"
                   placeholder="you@example.com"
                 />
@@ -116,14 +163,17 @@ export default function App() {
                   type="password"
                   required
                   value={password}
-                  onChange={(event) => setPassword(event.target.value)}
+                  onChange={(e) => setPassword(e.target.value)}
                   className="w-full border-0 border-b border-[#ddd6c9] bg-transparent px-0 py-2 text-[15px] outline-none transition-colors duration-300 placeholder:text-[#b3ab9f] focus:border-[#C6A75E]"
                   placeholder="Enter your password"
                 />
               </div>
 
               {errorMessage && (
-                <p className="font-aeonik text-sm text-[#9e4a45]">
+                <p
+                  role="alert"
+                  className="font-aeonik rounded bg-[#fff3f2] px-3 py-2 text-sm text-[#9e4a45] border border-[#f5c6c4]"
+                >
                   {errorMessage}
                 </p>
               )}
@@ -133,7 +183,7 @@ export default function App() {
                 disabled={isLoading}
                 className="font-aeonik mt-2 w-full bg-[#1C1C1C] px-4 py-3 text-sm text-[#FAFAF9] transition-all duration-300 hover:-translate-y-[1px] hover:opacity-90 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-75"
               >
-                {isLoading ? 'Signing in...' : 'Sign In'}
+                {isLoading ? 'Signing in…' : 'Sign In'}
               </button>
 
               <button
@@ -167,15 +217,9 @@ export default function App() {
       <Footer />
 
       <style jsx>{`
-        .font-druk-medium {
-          font-family: var(--font-druk-medium), sans-serif;
-        }
-        .font-aeonik {
-          font-family: var(--font-aeonik), sans-serif;
-        }
-        .font-inter {
-          font-family: var(--font-inter), sans-serif;
-        }
+        .font-druk-medium { font-family: var(--font-druk-medium), sans-serif; }
+        .font-aeonik      { font-family: var(--font-aeonik), sans-serif; }
+        .font-inter       { font-family: var(--font-inter), sans-serif; }
       `}</style>
     </div>
   );

@@ -1,4 +1,10 @@
 /** @type {import('next').NextConfig} */
+
+// ── Backend base URL ─────────────────────────────────────────────────────────
+// Change this to your actual backend URL/port.
+// Common ports: 3001, 4000, 5000, 8000, 8080
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+
 const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
@@ -6,6 +12,16 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-}
 
-export default nextConfig
+  // Proxy all /artisan/* requests to the backend so relative fetch URLs work.
+  async rewrites() {
+    return [
+      {
+        source: '/artisan/:path*',
+        destination: `${BACKEND_URL}/artisan/:path*`,
+      },
+    ];
+  },
+};
+
+export default nextConfig;

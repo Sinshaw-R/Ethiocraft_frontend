@@ -6,7 +6,7 @@ import { Footer } from '@/components/shared/footer'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Users, Lock, ArrowRight } from 'lucide-react'
-
+              
 export default function AuthChoicePage() {
   return (
     <div className="min-h-screen bg-[#FAFAF9] flex flex-col font-inter">
@@ -91,3 +91,4 @@ export default function AuthChoicePage() {
     </div>
   )
 }
+

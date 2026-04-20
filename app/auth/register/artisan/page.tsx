@@ -97,9 +97,8 @@ function phaseLabel(phase: SubmitPhase): string {
 
 /** Retrieves the stored auth token. Adjust the key to match your auth setup. */
 function getAuthToken(): string | null {
-  if (typeof window === 'undefined') return "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjbW1rbzNxMHowMDAza3Ric3AyYjlremFyIiwicm9sZSI6IkNVU1RPTUVSIiwiZW1haWwiOiJjdXN0b21lckBldGhpb2NyYWZ0LmNvbSIsImlhdCI6MTc3NjUzODA3NywiZXhwIjoxNzc2NjI0NDc3fQ.l_xOTaJCFKhpOJQU3KB9ShBZ737J0QKSY3R5dY1-7HM";
-  return "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjbW1rbzNxMHowMDAza3Ric3AyYjlremFyIiwicm9sZSI6IkNVU1RPTUVSIiwiZW1haWwiOiJjdXN0b21lckBldGhpb2NyYWZ0LmNvbSIsImlhdCI6MTc3NjUzODA3NywiZXhwIjoxNzc2NjI0NDc3fQ.l_xOTaJCFKhpOJQU3KB9ShBZ737J0QKSY3R5dY1-7HM"
-  //localStorage.getItem('token') ?? sessionStorage.getItem('token');
+  if (typeof window === 'undefined') return null; // Ensure this runs only in the browser
+  return localStorage.getItem('token') ?? sessionStorage.getItem('token');
 }
 
 // ---------------------------------------------------------------------------
@@ -108,10 +107,10 @@ function getAuthToken(): string | null {
 
 /**
  * Step 1 — Create a product draft with JSON data.
- * POST /artisan/products/drafts
+ * POST /artisan/products/samples
  */
-async function createProductDraft(payload: Record<string, unknown>, token: string): Promise<string> {
-  const res = await fetch(`${BaseUrl}/artisan/products/drafts`, {
+async function createProductSamples(payload: Record<string, unknown>, token: string): Promise<string> {
+  const res = await fetch(`${BaseUrl}/artisan/products/samples`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -127,30 +126,30 @@ async function createProductDraft(payload: Record<string, unknown>, token: strin
 
   const json = await res.json();
   // The API wraps the draft in a { data: { ... }, message: "..." } envelope
-  const draft = json?.data ?? json;
-  const draftId: string | undefined = draft?.draftId ?? draft?.id ?? draft?.draft?.id;
+  const sample = json?.data ?? json;
+  const sampleId: string | undefined = sample?.sampleId ?? sample?.id ?? sample?.sample?.id;
 
-  if (!draftId) {
-    console.log("No draftId returned from server. Check the API response shape.", json);
-    throw new Error('No draftId returned from server. Check the API response shape.');
+  if (!sampleId) {
+    console.log("No sampleId returned from server. Check the API response shape.", json);
+    throw new Error('No sampleId returned from server. Check the API response shape.');
 
   }
 
-  return draftId;
+  return sampleId;
 }
 
 /**
  * Step 2 — Upload images via multipart/form-data.
- * POST /artisan/products/drafts/:draftId/images
+ * POST /artisan/products/samples/:sampleId/images
  *
  * NOTE: Do NOT set Content-Type manually; the browser sets it automatically
  *       with the correct boundary when using FormData.
  */
-async function uploadDraftImages(draftId: string, files: File[], token: string): Promise<void> {
+async function uploadSampleImages(sampleId: string, files: File[], token: string): Promise<void> {
   const formData = new FormData();
   files.forEach((file) => formData.append('images', file));
 
-  const res = await fetch(`${BaseUrl}/artisan/products/drafts/${draftId}/images`, {
+  const res = await fetch(`${BaseUrl}/artisan/products/samples/${sampleId}/images`, {
     method: 'POST',
     headers: {
       // ⚠️ Content-Type is intentionally omitted so the browser can set the
@@ -166,23 +165,9 @@ async function uploadDraftImages(draftId: string, files: File[], token: string):
   }
 }
 
-/**
- * Step 3 — Submit the draft for verification.
- * POST /artisan/products/drafts/:draftId/submit
- */
-async function submitDraftForVerification(draftId: string, token: string): Promise<void> {
-  const res = await fetch(`${BaseUrl}/artisan/products/drafts/${draftId}/submit`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-
-  if (!res.ok) {
-    const text = await res.text().catch(() => res.statusText);
-    throw new Error(`Draft submission failed (${res.status}): ${text}`);
-  }
-}
+/* Submission for verification is an admin/reviewer responsibility.
+   The artisan flow creates the draft and uploads images only; reviewers
+   will submit drafts for verification from the admin side. */
 
 // ---------------------------------------------------------------------------
 // Component
@@ -349,7 +334,7 @@ export default function App() {
 
       };
 
-      const draftId = await createProductDraft(draftPayload, token);
+      const draftId = await createProductSamples(draftPayload, token);
 
       // ── Step 2: Upload images (FormData) ────────────────────────────────────
       setSubmitPhase('uploading-images');
@@ -361,12 +346,12 @@ export default function App() {
       ].slice(0, 6); // enforce the API's 6-image cap
 
       if (imagesToUpload.length > 0) {
-        await uploadDraftImages(draftId, imagesToUpload, token);
+        await uploadSampleImages(draftId, imagesToUpload, token);
       }
 
-      // ── Step 3: Submit draft for verification ───────────────────────────────
-      setSubmitPhase('submitting-draft');
-      await submitDraftForVerification(draftId, token);
+      // ── Step 3: Finalize — do NOT auto-submit for verification (admin action)
+      // The artisan creates the draft and uploads images; a reviewer will submit it.
+      // No call to the review/submit endpoint is made from the artisan flow.
 
       // ── Done ────────────────────────────────────────────────────────────────
       setSubmitPhase('done');

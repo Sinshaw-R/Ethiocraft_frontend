@@ -22,6 +22,18 @@ import {
 } from 'lucide-react';
 
 const AdminCharts = lazy(() => import('@/components/AdminCharts'));
+/* Admin Dashboard Overview
+ - This component composes the main admin interface and several panels.
+ - Mapping of admin responsibilities to UI areas in this file:
+   • Manage Users and Roles: sidebar 'Users' and 'Users Snapshot' panel.
+   • Review Samples / Approvals: 'Approvals' sidebar + 'Pending Approvals' panel.
+   • Create Draft from Sample, Review Drafts, Publish Product: 'Products' section + approvals workflow.
+   • Assign/Monitor Verification Agents: 'Work Queue' + approval actions (placeholders).
+   • Order Oversight: 'Orders' section and 'Recent Orders' panel.
+   • Reports / Analytics / System Health: 'Analytics' and 'Platform Health' panels.
+ - Notes: many buttons and quick actions are currently placeholders and should be wired
+   to real API endpoints (see TODO comments where present).
+*/
 
 type NavItem = {
   label: string;
@@ -71,6 +83,8 @@ const kpiCards = [
   { title: 'Active Artisans', value: '403', trend: '+9.7%' },
   { title: 'Conversion Rate', value: '4.2%', trend: '+0.8%' },
 ];
+// KPI cards: sample metrics shown on the dashboard.
+// In production these should be backed by real analytics / reporting APIs.
 
 const initialApprovalItems: ApprovalItem[] = [
   { id: 'A-201', type: 'Artisan', name: 'Selam Woven Studio', date: 'Today', priority: 'high' },
@@ -78,6 +92,8 @@ const initialApprovalItems: ApprovalItem[] = [
   { id: 'V-102', type: 'Verification', name: 'Mulu Leather House', date: '5h ago', priority: 'high' },
   { id: 'P-900', type: 'Product', name: 'Amhara Cotton Throw', date: 'Yesterday', priority: 'medium' },
 ];
+// Sample pending approvals used to populate the 'Pending Approvals' panel.
+// Replace with a real approval queue fetched from the server; wire approve/reject actions.
 
 const initialNotifications: NotificationItem[] = [
   { id: 'N-1', title: '9 artisan applications waiting for review', time: '5m ago', read: false },
@@ -85,6 +101,7 @@ const initialNotifications: NotificationItem[] = [
   { id: 'N-3', title: '1 product report needs moderation', time: '1h ago', read: true },
   { id: 'N-4', title: 'Weekly marketplace snapshot is ready', time: '3h ago', read: true },
 ];
+// Notification sample data. In production, pull notifications from server and support actions.
 
 const quickActions = [
   { title: 'Approve Artisans', subtitle: '9 applications waiting', icon: ShieldCheck },
@@ -92,6 +109,8 @@ const quickActions = [
   { title: 'Manage Orders', subtitle: '32 in processing', icon: ShoppingCart },
   { title: 'Handle Reports', subtitle: '4 flagged incidents', icon: AlertCircle },
 ];
+// Quick action cards: dashboard shortcuts shown on the main page.
+// They are visual shortcuts and currently trigger placeholder handlers.
 
 const usersSnapshot = [
   { name: 'Meklit Abebe', role: 'Artisan' },
@@ -99,6 +118,7 @@ const usersSnapshot = [
   { name: 'Rahel Tsegaye', role: 'Agent' },
   { name: 'Dawit Kebede', role: 'Artisan' },
 ];
+// Users snapshot: temporary demo data for quick glance. Replace with server data.
 
 const activityFeed = [
   'New artisan registered: Taitu Pottery House',
@@ -158,6 +178,9 @@ export default function App() {
     { label: 'Verify Artisan', note: 'Open artisan verification queue' },
     { label: 'Export Orders', note: 'Prepare a CSV export job' },
   ];
+  // Quick action commands: these drive the '+ Quick Actions' popover.
+  // Currently they are UI stubs that show an ephemeral feedback message.
+  // Replace handlers in `runQuickAction` with real API-driven behavior.
 
   const searchResults = useMemo(() => {
     const source = [
@@ -184,6 +207,9 @@ export default function App() {
   };
 
   const runQuickAction = (label: string) => {
+    // NOTE: quick actions currently perform local navigation / feedback only.
+    // Replace with backend calls to perform real admin tasks (create product draft,
+    // enqueue verification, start export jobs, etc.) and show progress status.
     if (label === 'Verify Artisan') {
       setActiveNav('Approvals');
     }
@@ -212,6 +238,9 @@ export default function App() {
     status: ['Active', 'Pending', 'In Review'][index % 3],
     updated: ['2h ago', 'Today', 'Yesterday'][index % 3],
   }));
+  // Placeholder rows for the Work Queue table. Replace with API-driven queue:
+  // - filter by status/agent/region
+  // - support assignment and escalation actions
 
   return (
     <div className="min-h-screen bg-[#FAFAF9] text-[#1C1C1C]" style={{ fontFamily: 'Inter, sans-serif' }}>
@@ -502,6 +531,10 @@ export default function App() {
                     </h2>
                     <span className="text-xs text-[#7a6f67]">Needs attention</span>
                   </div>
+                  {/* Pending Approvals panel:
+                      - Review artisan submissions, products, and verification tasks.
+                      - Approve/Reject buttons should call backend APIs to change status
+                        and create audit logs; add filters and assignment controls. */}
                   <div className="space-y-3">
                     {approvalItems.map((item) => (
                       <div key={item.id} className="rounded-2xl border border-[#ece2d3] px-4 py-3 transition hover:bg-[#f9f5ed]">
@@ -520,6 +553,10 @@ export default function App() {
                           </div>
                           <p className="text-xs text-[#7e7268]">{item.date}</p>
                         </div>
+                        {/* TODO: Implement server-side approval API calls here. Actions should:
+                          - update the approval record status
+                          - record who performed the action (audit log)
+                          - notify assigned agents or the artisan as appropriate */}
                         <div className="mt-3 flex gap-2">
                           <button
                             className="inline-flex items-center gap-1 rounded-lg bg-[#3E2723] px-3 py-1.5 text-xs text-[#FAFAF9] transition hover:opacity-90"
@@ -695,6 +732,8 @@ export default function App() {
                 {activeNav}
               </h1>
               <p className="mt-2 text-sm text-[#6f655d]">{sectionDescriptions[activeNav]}</p>
+              {/* Action buttons below (New / Import / Export) are currently placeholders.
+                  Wire them to API endpoints for create/import/export behavior. */}
               <div className="mt-5 flex flex-wrap gap-3" style={{ fontFamily: 'Aeonik, Inter, sans-serif' }}>
                 <button
                   className="rounded-xl bg-[#3E2723] px-4 py-2 text-sm text-[#FAFAF9] transition hover:opacity-90"
@@ -736,6 +775,10 @@ export default function App() {
                 </h2>
                 <span className="rounded-full bg-[#f4ead6] px-2 py-1 text-xs text-[#5f4f33]">Placeholder Data</span>
               </div>
+              {/* Work Queue table:
+                  - Intended for monitoring verification/backlog tasks.
+                  - Replace `placeholderRows` with the real queue API and add actions:
+                    assign agent, escalate, change status, add notes. */}
 
               <div className="overflow-hidden rounded-2xl border border-[#ece2d3]">
                 <div className="grid grid-cols-[1fr_1.6fr_1fr_1fr_1fr] bg-[#f8f4ec] px-4 py-3 text-xs uppercase tracking-[0.08em] text-[#7e7268]">
@@ -821,3 +864,4 @@ export default function App() {
     </div>
   );
 }
+

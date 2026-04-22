@@ -1,0 +1,102 @@
+"use client"
+import { Button } from '@/components/ui/button';
+import React from 'react';
+
+type Props = {
+  title: string;
+  description?: string;
+  placeholderRows?: any[];
+  showFeedback?: (m: string) => void;
+  setActiveNav?: (s: string) => void;
+  onViewDetails?: (row: any) => void; // New prop for view details action
+};
+
+export default function GenericSection({
+  title,
+  description,
+  placeholderRows = [],
+  showFeedback,
+  setActiveNav,
+  onViewDetails,
+}: Props) {
+  return (
+    <main className="space-y-6 px-6 py-8 lg:px-8">
+      <section className="rounded-3xl border border-[#e8dece] bg-white p-6 shadow-[0_8px_24px_rgba(62,39,35,0.05)]">
+        <h1 className="text-3xl uppercase tracking-[0.04em]" style={{ fontFamily: '"Druk Wide", "Arial Black", sans-serif' }}>
+          {title}
+        </h1>
+        <p className="mt-2 text-sm text-[#6f655d]">{description}</p>
+        <div className="mt-5 flex flex-wrap gap-3" style={{ fontFamily: 'Aeonik, Inter, sans-serif' }}>
+          <button
+            className="rounded-xl bg-[#3E2723] px-4 py-2 text-sm text-[#FAFAF9] transition hover:opacity-90"
+            onClick={() => showFeedback?.(`Create new ${title.slice(0, -1).toLowerCase()} placeholder`)}
+          >
+            New {title.slice(0, -1)}
+          </button>
+          <button
+            className="rounded-xl border border-[#dfd3c1] px-4 py-2 text-sm text-[#5f564e] transition hover:bg-[#f5f0e7]"
+            onClick={() => showFeedback?.(`Import started for ${title}`)}
+          >
+            Import Data
+          </button>
+          <button
+            className="rounded-xl border border-[#dfd3c1] px-4 py-2 text-sm text-[#5f564e] transition hover:bg-[#f5f0e7]"
+            onClick={() => showFeedback?.(`CSV export prepared for ${title}`)}
+          >
+            Export CSV
+          </button>
+        </div>
+      </section>
+
+      <section className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        {['Overview', 'Work Queue', 'Performance'].map((item, index) => (
+          <article key={item} className="rounded-3xl border border-[#e8dece] bg-white p-5 shadow-[0_6px_20px_rgba(62,39,35,0.04)]">
+            <p className="text-xs uppercase tracking-[0.08em] text-[#82766b]" style={{ fontFamily: 'Aeonik, Inter, sans-serif' }}>
+              {item}
+            </p>
+            <p className="mt-2 text-3xl font-semibold">{(index + 1) * 24}</p>
+            <p className="mt-2 text-xs text-[#6f655d]">Temporary placeholder metric for {title}</p>
+          </article>
+        ))}
+      </section>
+
+      <section className="rounded-3xl border border-[#e8dece] bg-white p-5 shadow-[0_8px_24px_rgba(62,39,35,0.04)]">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-xl uppercase tracking-[0.04em]" style={{ fontFamily: '"Druk Wide", "Arial Black", sans-serif' }}>
+            {title} Queue
+          </h2>
+          <span className="rounded-full bg-[#f4ead6] px-2 py-1 text-xs text-[#5f4f33]">Placeholder Data</span>
+        </div>
+
+        <div className="overflow-x-auto rounded-2xl border border-[#ece2d3]">
+          <div className="grid min-w-[800px] grid-cols-[1fr_1.6fr_1fr_1fr_1fr_0.5fr] gap-4 bg-[#f8f4ec] px-4 py-3 text-xs uppercase tracking-[0.08em] text-[#7e7268] lg:min-w-full">
+            <span className="truncate">ID</span>
+            <span className="truncate">Name</span>
+            <span className="truncate">Owner</span>
+            <span className="truncate">Status</span>
+            <span className="truncate">Updated</span>
+            {onViewDetails && <span className="truncate text-center">Actions</span>}
+          </div>
+          <div className="divide-y divide-[#f1e8da]" style={{ fontFamily: 'Inter, sans-serif' }}>
+            {(placeholderRows || []).map((row) => (
+              <div key={row.id} className="grid min-w-[800px] grid-cols-[1fr_1.6fr_1fr_1fr_1fr_0.5fr] gap-4 items-center px-4 py-3 text-sm transition hover:bg-[#fcf8f0] lg:min-w-full">
+                <span className="min-w-0 truncate font-medium text-[#3E2723]">{row.id}</span>
+                <span className="min-w-0 truncate" title={row.name}>{row.name}</span>
+                <span className="min-w-0 truncate" title={row.owner}>{row.owner}</span>
+                <span className="min-w-0">
+                  <span className="inline-block max-w-full truncate rounded-full bg-[#f5efe2] px-2 py-1 text-xs text-[#6b5f53]">{row.status}</span>
+                </span>
+                <span className="min-w-0 truncate text-[#766a60]">{row.updated}</span>
+                {onViewDetails && (
+                  <div className="flex justify-center">
+                    <Button variant="ghost" size="sm" onClick={() => onViewDetails(row)}>View</Button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+    </main>
+  );
+}

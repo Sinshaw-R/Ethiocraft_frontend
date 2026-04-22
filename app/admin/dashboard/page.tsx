@@ -1,5 +1,5 @@
 "use client"
-import { lazy, Suspense, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import {
   AlertCircle,
   BarChart3,
@@ -22,6 +22,22 @@ import {
 } from 'lucide-react';
 
 const AdminCharts = lazy(() => import('@/components/AdminCharts'));
+import ActivNavs from '@/components/ui/activnavs';
+import ApprovalsPanel from '@/components/ui/ApprovalsPanel';
+import RecentOrders from '@/components/ui/RecentOrders';
+import UsersSnapshot from '@/components/ui/UsersSnapshot';
+import PlatformHealth from '@/components/ui/PlatformHealth';
+import ActivityFeed from '@/components/ui/ActivityFeed';
+import DashboardSection from '@/components/ui/navSections/DashboardSection';
+import UsersSection from '@/components/ui/navSections/UsersSection';
+import ArtisansSection from '@/components/ui/navSections/ArtisansSection';
+import ProductsSection from '@/components/ui/navSections/ProductsSection';
+import OrdersSection from '@/components/ui/navSections/OrdersSection';
+import ApprovalsSection from '@/components/ui/navSections/ApprovalsSection';
+import AnalyticsSection from '@/components/ui/navSections/AnalyticsSection';
+import ReportsSection from '@/components/ui/navSections/ReportsSection';
+import SettingsSection from '@/components/ui/navSections/SettingsSection';
+import GenericSection from '@/components/ui/navSections/GenericSection';
 /* Admin Dashboard Overview
  - This component composes the main admin interface and several panels.
  - Mapping of admin responsibilities to UI areas in this file:
@@ -136,14 +152,11 @@ const baseOrders: Order[] = [
   { id: 'ORD-4107', customer: 'Semhal D.', amount: '$165.00', status: 'Shipped', date: 'Dec 10' },
 ];
 
-const orders: Order[] = Array.from({ length: 120 }, (_, index) => {
-  const seed = baseOrders[index % baseOrders.length];
-  return { ...seed, id: `ORD-${4102 + index}` };
-});
-
-function statusClass(status: Order['status']) {
-  if (status === 'Completed') return 'bg-emerald-50 text-emerald-700';
-  if (status === 'Processing') return 'bg-amber-50 text-amber-700';
+function statusClass(status: any) {
+  if (!status) return 'bg-sky-50 text-sky-700';
+  const s = String(status).toLowerCase();
+  if (/paid|success|complete|deliv|fulfilled/.test(s)) return 'bg-emerald-50 text-emerald-700';
+  if (/process|pending|waiting/.test(s)) return 'bg-amber-50 text-amber-700';
   return 'bg-sky-50 text-sky-700';
 }
 
@@ -158,18 +171,46 @@ export default function App() {
   const [selectedRange, setSelectedRange] = useState('Last 30 days');
   const [feedbackMessage, setFeedbackMessage] = useState('');
   const [detailsOrder, setDetailsOrder] = useState<Order | null>(null);
+  
+  // Centralized Orders State
+  const [globalOrders, setGlobalOrders] = useState<any[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(true);
+
   const [approvalItems, setApprovalItems] = useState<ApprovalItem[]>(initialApprovalItems);
   const [notifications, setNotifications] = useState<NotificationItem[]>(initialNotifications);
-  const [visibleStart, setVisibleStart] = useState(0);
+  
+  useEffect(() => {
+    const fetchGlobalOrders = async () => {
+      try {
+        const base = (process.env.NEXT_PUBLIC_BASE_URL ?? '').replace(/\/$/, '') || 'http://localhost:4000/api/v1';
+        const token = localStorage.getItem('token');
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (token) headers.Authorization = `Bearer ${token}`;
+
+        const res = await fetch(`${base}/orders`, { headers });
+        if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+        const json = await res.json();
+
+        let items: any[] = [];
+        if (Array.isArray(json?.data?.items)) items = json.data.items;
+        else if (Array.isArray(json)) items = json;
+        else if (Array.isArray(json?.items)) items = json.items;
+        else if (Array.isArray(json?.data)) items = json.data;
+        else if (json && typeof json === 'object') {
+          items = Object.values(json).flat().filter(Boolean);
+        }
+        setGlobalOrders(items);
+      } catch (err) {
+        console.error('Failed to fetch global orders', err);
+      } finally {
+        setOrdersLoading(false);
+      }
+    };
+    fetchGlobalOrders();
+  }, []);
 
   const rowHeight = 56;
   const containerHeight = 336;
-  const visibleCount = Math.ceil(containerHeight / rowHeight) + 2;
-
-  const visibleOrders = useMemo(
-    () => orders.slice(visibleStart, Math.min(visibleStart + visibleCount, orders.length)),
-    [visibleStart, visibleCount],
-  );
 
   const unreadNotifications = notifications.filter((item) => !item.read).length;
 
@@ -185,7 +226,7 @@ export default function App() {
   const searchResults = useMemo(() => {
     const source = [
       ...navigation.map((item) => ({ type: 'Section', name: item.label })),
-      ...orders.slice(0, 8).map((order) => ({ type: 'Order', name: order.id })),
+      ...globalOrders.slice(0, 8).map((order) => ({ type: 'Order', name: order.id })),
       ...usersSnapshot.map((user) => ({ type: 'User', name: user.name })),
     ];
 
@@ -267,30 +308,13 @@ export default function App() {
           </button>
         </div>
 
-        <nav className="mt-8 space-y-1">
-          {navigation.map((item) => {
-            const Icon = item.icon;
-            const active = activeNav === item.label;
-            return (
-              <button
-                key={item.label}
-                onClick={() => {
-                  setActiveNav(item.label);
-                  setMobileSidebarOpen(false);
-                }}
-                className={`group flex w-full items-center gap-3 border-l-2 px-3 py-2.5 text-sm transition ${
-                  active
-                    ? 'border-l-[#C6A75E] bg-[#f6f0e3] text-[#3E2723]'
-                    : 'border-l-transparent text-[#6d645e] hover:bg-[#f5f0e7] hover:text-[#2f2623]'
-                }`}
-                style={{ fontFamily: 'Aeonik, Inter, sans-serif' }}
-              >
-                <Icon className="h-4 w-4" />
-                {!collapsed && <span>{item.label}</span>}
-              </button>
-            );
-          })}
-        </nav>
+        <ActivNavs
+          navigation={navigation}
+          activeNav={activeNav}
+          setActiveNav={setActiveNav}
+          collapsed={collapsed}
+          setMobileSidebarOpen={setMobileSidebarOpen}
+        />
       </aside>
 
       {mobileSidebarOpen && (
@@ -455,356 +479,40 @@ export default function App() {
           </div>
         </header>
 
-        {activeNav === 'Dashboard' ? (
-          <main className="space-y-8 px-6 py-8 lg:px-8">
-            <section className="flex flex-wrap items-end justify-between gap-4 rounded-3xl border border-[#e8dece] bg-white p-6 shadow-[0_8px_28px_rgba(62,39,35,0.06)]">
-              <div>
-                <h1 className="text-3xl uppercase tracking-[0.04em]" style={{ fontFamily: '"Druk Wide", "Arial Black", sans-serif' }}>
-                  Admin Dashboard
-                </h1>
-                <p className="mt-2 text-sm text-[#6d645e]">Monitor and manage the marketplace</p>
-              </div>
-              <div className="flex items-center gap-3" style={{ fontFamily: 'Aeonik, Inter, sans-serif' }}>
-                <select
-                  value={selectedRange}
-                  onChange={(event) => {
-                    setSelectedRange(event.target.value);
-                    showFeedback(`Date range changed: ${event.target.value}`);
-                  }}
-                  className="rounded-xl border border-[#e1d7c7] bg-white px-3 py-2 text-sm text-[#5f5750] outline-none"
-                >
-                  <option>Last 30 days</option>
-                  <option>Last 90 days</option>
-                  <option>This year</option>
-                </select>
-                <button
-                  className="rounded-xl border border-[#e1d7c7] px-4 py-2 text-sm transition hover:bg-[#f5f0e7]"
-                  onClick={() => showFeedback('Export started with placeholder dataset')}
-                >
-                  Export
-                </button>
-              </div>
-            </section>
-
-            <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
-              {kpiCards.map((card, index) => (
-                <article
-                  key={card.title}
-                  className="rounded-3xl border border-[#e8dece] bg-white p-5 shadow-[0_8px_20px_rgba(62,39,35,0.05)] transition duration-300 hover:-translate-y-1"
-                  style={{ animation: `kpiIn 360ms ease ${index * 60}ms both` }}
-                >
-                  <p className="text-xs uppercase tracking-[0.08em] text-[#81756b]" style={{ fontFamily: 'Aeonik, Inter, sans-serif' }}>
-                    {card.title}
-                  </p>
-                  <p className="mt-2 text-3xl font-semibold">{card.value}</p>
-                  <p className="mt-2 text-xs text-emerald-700">{card.trend} vs last period</p>
-                  <div className="mt-4 h-8 w-full rounded-lg bg-[linear-gradient(90deg,#f3ead8_0%,#eadab8_45%,#d7c08f_100%)] opacity-60" />
-                </article>
-              ))}
-            </section>
-
-            <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-              {quickActions.map((action) => {
-                const Icon = action.icon;
-                return (
-                  <button
-                    key={action.title}
-                    className="rounded-3xl border border-[#e8dece] bg-white p-5 text-left shadow-[0_6px_20px_rgba(62,39,35,0.04)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_10px_30px_rgba(198,167,94,0.2)]"
-                    onClick={() => runQuickAction(action.title.replace('Review ', '').includes('Products') ? 'Add Product' : action.title)}
-                  >
-                    <Icon className="h-5 w-5 text-[#3E2723]" />
-                    <p className="mt-3 text-sm font-medium" style={{ fontFamily: 'Aeonik, Inter, sans-serif' }}>
-                      {action.title}
-                    </p>
-                    <p className="mt-1 text-xs text-[#7e7268]">{action.subtitle}</p>
-                  </button>
-                );
-              })}
-            </section>
-
-            <section className="grid grid-cols-1 gap-6 xl:grid-cols-12">
-              <div className="space-y-6 xl:col-span-8">
-                <article className="rounded-3xl border border-[#e8dece] bg-white p-5 shadow-[0_8px_24px_rgba(62,39,35,0.05)]">
-                  <div className="mb-4 flex items-center justify-between">
-                    <h2 className="text-xl uppercase tracking-[0.04em]" style={{ fontFamily: '"Druk Wide", "Arial Black", sans-serif' }}>
-                      Pending Approvals
-                    </h2>
-                    <span className="text-xs text-[#7a6f67]">Needs attention</span>
-                  </div>
-                  {/* Pending Approvals panel:
-                      - Review artisan submissions, products, and verification tasks.
-                      - Approve/Reject buttons should call backend APIs to change status
-                        and create audit logs; add filters and assignment controls. */}
-                  <div className="space-y-3">
-                    {approvalItems.map((item) => (
-                      <div key={item.id} className="rounded-2xl border border-[#ece2d3] px-4 py-3 transition hover:bg-[#f9f5ed]">
-                        <div className="flex flex-wrap items-center justify-between gap-3">
-                          <div className="flex items-center gap-3">
-                            <span
-                              className={`h-2 w-2 rounded-full ${item.priority === 'high' ? 'bg-rose-500' : 'bg-amber-500'}`}
-                            />
-                            <span
-                              className="rounded-full bg-[#f1e9da] px-2 py-0.5 text-[10px] uppercase tracking-[0.08em] text-[#594b37]"
-                              style={{ fontFamily: 'Aeonik, Inter, sans-serif' }}
-                            >
-                              {item.type}
-                            </span>
-                            <p className="text-sm font-medium">{item.name}</p>
-                          </div>
-                          <p className="text-xs text-[#7e7268]">{item.date}</p>
-                        </div>
-                        {/* TODO: Implement server-side approval API calls here. Actions should:
-                          - update the approval record status
-                          - record who performed the action (audit log)
-                          - notify assigned agents or the artisan as appropriate */}
-                        <div className="mt-3 flex gap-2">
-                          <button
-                            className="inline-flex items-center gap-1 rounded-lg bg-[#3E2723] px-3 py-1.5 text-xs text-[#FAFAF9] transition hover:opacity-90"
-                            onClick={() => handleApprovalAction(item.id, 'approve')}
-                          >
-                            <Check className="h-3 w-3" /> Approve
-                          </button>
-                          <button
-                            className="inline-flex items-center gap-1 rounded-lg border border-[#d4c8b6] px-3 py-1.5 text-xs text-[#6c6056] transition hover:bg-[#f8f3ea]"
-                            onClick={() => handleApprovalAction(item.id, 'reject')}
-                          >
-                            <X className="h-3 w-3" /> Reject
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </article>
-
-                <article className="rounded-3xl border border-[#e8dece] bg-white p-5 shadow-[0_8px_24px_rgba(62,39,35,0.05)]">
-                  <div className="mb-4 flex items-center justify-between">
-                    <h2 className="text-xl uppercase tracking-[0.04em]" style={{ fontFamily: '"Druk Wide", "Arial Black", sans-serif' }}>
-                      Recent Orders
-                    </h2>
-                    <button
-                      className="text-sm text-[#6c6157] transition hover:text-[#3E2723]"
-                      onClick={() => {
-                        setActiveNav('Orders');
-                        showFeedback('Opened Orders section');
-                      }}
-                    >
-                      View all
-                    </button>
-                  </div>
-
-                  <div className="overflow-hidden rounded-2xl border border-[#ebe1d2]">
-                    <div className="grid grid-cols-[1.2fr_1.5fr_1fr_1fr_1fr_0.8fr] bg-[#f8f4ec] px-4 py-3 text-xs uppercase tracking-[0.08em] text-[#7e7268]">
-                      <span>Order ID</span>
-                      <span>Customer</span>
-                      <span>Amount</span>
-                      <span>Status</span>
-                      <span>Date</span>
-                      <span>Action</span>
-                    </div>
-                    <div
-                      className="relative overflow-y-auto"
-                      style={{ height: `${containerHeight}px` }}
-                      onScroll={(event) => {
-                        const next = Math.floor(event.currentTarget.scrollTop / rowHeight);
-                        if (next !== visibleStart) setVisibleStart(next);
-                      }}
-                    >
-                      <div style={{ height: `${orders.length * rowHeight}px`, position: 'relative' }}>
-                        {visibleOrders.map((order, idx) => {
-                          const index = visibleStart + idx;
-                          return (
-                            <div
-                              key={order.id}
-                              className="grid grid-cols-[1.2fr_1.5fr_1fr_1fr_1fr_0.8fr] items-center px-4 text-sm transition hover:bg-[#fcf8f0]"
-                              style={{
-                                position: 'absolute',
-                                top: `${index * rowHeight}px`,
-                                left: 0,
-                                right: 0,
-                                height: `${rowHeight}px`,
-                                fontFamily: 'Inter, sans-serif',
-                              }}
-                            >
-                              <span className="font-medium text-[#3E2723]">{order.id}</span>
-                              <span>{order.customer}</span>
-                              <span>{order.amount}</span>
-                              <span>
-                                <span className={`rounded-full px-2 py-1 text-xs ${statusClass(order.status)}`}>{order.status}</span>
-                              </span>
-                              <span className="text-[#72665d]">{order.date}</span>
-                              <button
-                                className="text-left text-xs text-[#3E2723] underline underline-offset-4"
-                                onClick={() => setDetailsOrder(order)}
-                              >
-                                View
-                              </button>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                </article>
-              </div>
-
-              <aside className="space-y-6 xl:col-span-4">
-                <article className="rounded-3xl border border-[#e8dece] bg-white p-5 shadow-[0_6px_20px_rgba(62,39,35,0.04)]">
-                  <h3 className="text-lg uppercase tracking-[0.04em]" style={{ fontFamily: '"Druk Wide", "Arial Black", sans-serif' }}>
-                    Users Snapshot
-                  </h3>
-                  <div className="mt-4 space-y-3">
-                    {usersSnapshot.map((user) => (
-                      <div key={user.name} className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="h-8 w-8 rounded-full bg-[#dccfbd]" />
-                          <p className="text-sm">{user.name}</p>
-                        </div>
-                        <span className="rounded-full bg-[#f5efe2] px-2 py-1 text-[11px] text-[#6f6257]">{user.role}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <button
-                    className="mt-4 text-sm text-[#3E2723] underline underline-offset-4"
-                    onClick={() => {
-                      setActiveNav('Users');
-                      showFeedback('Opened user management');
-                    }}
-                  >
-                    Manage All
-                  </button>
-                </article>
-
-                <article className="rounded-3xl border border-[#e8dece] bg-white p-5 shadow-[0_6px_20px_rgba(62,39,35,0.04)]">
-                  <h3 className="text-lg uppercase tracking-[0.04em]" style={{ fontFamily: '"Druk Wide", "Arial Black", sans-serif' }}>
-                    Platform Health
-                  </h3>
-                  <div className="mt-4 space-y-4">
-                    {[
-                      { label: 'Active artisans', value: 82 },
-                      { label: 'Total products', value: 74 },
-                      { label: 'Growth', value: 63 },
-                    ].map((metric) => (
-                      <div key={metric.label}>
-                        <div className="mb-1 flex justify-between text-xs text-[#776b62]">
-                          <span>{metric.label}</span>
-                          <span>{metric.value}%</span>
-                        </div>
-                        <div className="h-2 bg-[#f2ebdf]">
-                          <div className="h-full bg-[#C6A75E] transition-all duration-500" style={{ width: `${metric.value}%` }} />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </article>
-
-                <article className="rounded-3xl border border-[#e8dece] bg-white p-5 shadow-[0_6px_20px_rgba(62,39,35,0.04)]">
-                  <h3 className="text-lg uppercase tracking-[0.04em]" style={{ fontFamily: '"Druk Wide", "Arial Black", sans-serif' }}>
-                    Activity Feed
-                  </h3>
-                  <ol className="mt-4 space-y-3 border-l border-[#eadfce] pl-4">
-                    {activityFeed.map((item) => (
-                      <li key={item} className="relative text-sm text-[#61584f]">
-                        <span className="absolute -left-[21px] top-2 h-2 w-2 rounded-full bg-[#C6A75E]" />
-                        {item}
-                      </li>
-                    ))}
-                  </ol>
-                </article>
-              </aside>
-            </section>
-
-            <section className="rounded-3xl border border-[#e8dece] bg-white p-5 shadow-[0_8px_24px_rgba(62,39,35,0.04)]">
-              <div className="mb-4 flex items-center justify-between">
-                <h2 className="text-xl uppercase tracking-[0.04em]" style={{ fontFamily: '"Druk Wide", "Arial Black", sans-serif' }}>
-                  Analytics
-                </h2>
-                <GanttChartSquare className="h-5 w-5 text-[#8a7f73]" />
-              </div>
-              <Suspense fallback={<div className="h-64 animate-pulse rounded-2xl bg-[#f5efe2]" />}>
-                <AdminCharts />
-              </Suspense>
-            </section>
-          </main>
-        ) : (
-          <main className="space-y-6 px-6 py-8 lg:px-8">
-            <section className="rounded-3xl border border-[#e8dece] bg-white p-6 shadow-[0_8px_24px_rgba(62,39,35,0.05)]">
-              <h1 className="text-3xl uppercase tracking-[0.04em]" style={{ fontFamily: '"Druk Wide", "Arial Black", sans-serif' }}>
-                {activeNav}
-              </h1>
-              <p className="mt-2 text-sm text-[#6f655d]">{sectionDescriptions[activeNav]}</p>
-              {/* Action buttons below (New / Import / Export) are currently placeholders.
-                  Wire them to API endpoints for create/import/export behavior. */}
-              <div className="mt-5 flex flex-wrap gap-3" style={{ fontFamily: 'Aeonik, Inter, sans-serif' }}>
-                <button
-                  className="rounded-xl bg-[#3E2723] px-4 py-2 text-sm text-[#FAFAF9] transition hover:opacity-90"
-                  onClick={() => showFeedback(`Create new ${activeNav.slice(0, -1).toLowerCase()} placeholder`)}
-                >
-                  New {activeNav.slice(0, -1)}
-                </button>
-                <button
-                  className="rounded-xl border border-[#dfd3c1] px-4 py-2 text-sm text-[#5f564e] transition hover:bg-[#f5f0e7]"
-                  onClick={() => showFeedback(`Import started for ${activeNav}`)}
-                >
-                  Import Data
-                </button>
-                <button
-                  className="rounded-xl border border-[#dfd3c1] px-4 py-2 text-sm text-[#5f564e] transition hover:bg-[#f5f0e7]"
-                  onClick={() => showFeedback(`CSV export prepared for ${activeNav}`)}
-                >
-                  Export CSV
-                </button>
-              </div>
-            </section>
-
-            <section className="grid grid-cols-1 gap-4 md:grid-cols-3">
-              {['Overview', 'Work Queue', 'Performance'].map((item, index) => (
-                <article key={item} className="rounded-3xl border border-[#e8dece] bg-white p-5 shadow-[0_6px_20px_rgba(62,39,35,0.04)]">
-                  <p className="text-xs uppercase tracking-[0.08em] text-[#82766b]" style={{ fontFamily: 'Aeonik, Inter, sans-serif' }}>
-                    {item}
-                  </p>
-                  <p className="mt-2 text-3xl font-semibold">{(index + 1) * 24}</p>
-                  <p className="mt-2 text-xs text-[#6f655d]">Temporary placeholder metric for {activeNav}</p>
-                </article>
-              ))}
-            </section>
-
-            <section className="rounded-3xl border border-[#e8dece] bg-white p-5 shadow-[0_8px_24px_rgba(62,39,35,0.04)]">
-              <div className="mb-4 flex items-center justify-between">
-                <h2 className="text-xl uppercase tracking-[0.04em]" style={{ fontFamily: '"Druk Wide", "Arial Black", sans-serif' }}>
-                  {activeNav} Queue
-                </h2>
-                <span className="rounded-full bg-[#f4ead6] px-2 py-1 text-xs text-[#5f4f33]">Placeholder Data</span>
-              </div>
-              {/* Work Queue table:
-                  - Intended for monitoring verification/backlog tasks.
-                  - Replace `placeholderRows` with the real queue API and add actions:
-                    assign agent, escalate, change status, add notes. */}
-
-              <div className="overflow-hidden rounded-2xl border border-[#ece2d3]">
-                <div className="grid grid-cols-[1fr_1.6fr_1fr_1fr_1fr] bg-[#f8f4ec] px-4 py-3 text-xs uppercase tracking-[0.08em] text-[#7e7268]">
-                  <span>ID</span>
-                  <span>Name</span>
-                  <span>Owner</span>
-                  <span>Status</span>
-                  <span>Updated</span>
-                </div>
-                <div className="divide-y divide-[#f1e8da]" style={{ fontFamily: 'Inter, sans-serif' }}>
-                  {placeholderRows.map((row) => (
-                    <div key={row.id} className="grid grid-cols-[1fr_1.6fr_1fr_1fr_1fr] items-center px-4 py-3 text-sm transition hover:bg-[#fcf8f0]">
-                      <span className="font-medium text-[#3E2723]">{row.id}</span>
-                      <span>{row.name}</span>
-                      <span>{row.owner}</span>
-                      <span>
-                        <span className="rounded-full bg-[#f5efe2] px-2 py-1 text-xs text-[#6b5f53]">{row.status}</span>
-                      </span>
-                      <span className="text-[#766a60]">{row.updated}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </section>
-          </main>
-        )}
+        {(() => {
+          const SectionMap: Record<string, any> = {
+            Dashboard: DashboardSection,
+            Users: UsersSection,
+            Artisans: ArtisansSection,
+            Products: ProductsSection,
+            Orders: OrdersSection,
+            Approvals: ApprovalsSection,
+            Analytics: AnalyticsSection,
+            Reports: ReportsSection,
+            Settings: SettingsSection,
+          };
+          const ActiveSection = SectionMap[activeNav] ?? GenericSection;
+          return (
+            <ActiveSection
+              activeNav={activeNav}
+              setActiveNav={setActiveNav}
+              showFeedback={showFeedback}
+              sectionDescriptions={sectionDescriptions}
+              placeholderRows={placeholderRows}
+              kpiCards={kpiCards}
+              quickActions={quickActions}
+              usersSnapshot={usersSnapshot}
+              activityFeed={activityFeed}
+              approvalItems={approvalItems}
+              handleApprovalAction={handleApprovalAction}
+              rowHeight={rowHeight}
+              containerHeight={containerHeight}
+              orders={globalOrders}
+              ordersLoading={ordersLoading}
+              setDetailsOrder={setDetailsOrder}
+            />
+          );
+        })()}
       </div>
 
       {detailsOrder && (
@@ -828,11 +536,11 @@ export default function App() {
               </div>
               <div>
                 <p className="text-xs uppercase tracking-[0.1em] text-[#85786d]">Customer</p>
-                <p className="mt-1 font-medium">{detailsOrder.customer}</p>
+                <p className="mt-1 font-medium">{typeof (detailsOrder as any).customer === 'string' ? (detailsOrder as any).customer : ((detailsOrder as any).customer ? `${(detailsOrder as any).customer.firstName ?? ''} ${(detailsOrder as any).customer.lastName ?? ''}`.trim() || (detailsOrder as any).customer.email || (detailsOrder as any).customerId || '' : '')}</p>
               </div>
               <div>
                 <p className="text-xs uppercase tracking-[0.1em] text-[#85786d]">Amount</p>
-                <p className="mt-1 font-medium">{detailsOrder.amount}</p>
+                <p className="mt-1 font-medium">{((detailsOrder as any).totalAmount ?? (detailsOrder as any).amount ?? (detailsOrder as any).subtotalAmount) ? `${(detailsOrder as any).totalAmount ?? (detailsOrder as any).amount ?? (detailsOrder as any).subtotalAmount}${(detailsOrder as any).currency ? ` ${(detailsOrder as any).currency}` : ''}` : ''}</p>
               </div>
               <div>
                 <p className="text-xs uppercase tracking-[0.1em] text-[#85786d]">Status</p>
@@ -842,7 +550,7 @@ export default function App() {
               </div>
               <div>
                 <p className="text-xs uppercase tracking-[0.1em] text-[#85786d]">Date</p>
-                <p className="mt-1 font-medium">{detailsOrder.date}</p>
+                <p className="mt-1 font-medium">{(detailsOrder as any).createdAt ?? (detailsOrder as any).paidAt ?? detailsOrder.date ?? ''}</p>
               </div>
             </div>
             <button
@@ -864,4 +572,3 @@ export default function App() {
     </div>
   );
 }
-

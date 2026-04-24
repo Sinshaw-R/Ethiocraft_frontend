@@ -527,16 +527,6 @@ export default function CheckoutPage() {
                 <span className="text-foreground font-medium">Total</span>
                 <span className="text-2xl font-bold text-primary">ETB {orderData.total.toLocaleString()}</span>
               </div>
-
-              <div className="bg-primary/5 border border-primary/20 rounded-lg p-4 space-y-3 text-xs">
-                <div className="flex items-center gap-2">
-                  <Lock className="w-4 h-4 text-primary shrink-0" />
-                  <p className="text-foreground">Secure checkout with encryption</p>
-                </div>
-                <p className="text-muted-foreground leading-relaxed">
-                  No direct contact with artisans. Ethio Crafts handles all communication and quality assurance.
-                </p>
-              </div>
             </div>
           </div>
         </div>

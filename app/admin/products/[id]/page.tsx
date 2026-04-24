@@ -121,14 +121,16 @@ export default function App() {
     showToast('Review removed');
   };
 
-  if (loading) return (
-    <div className="flex h-screen items-center justify-center bg-[#FAFAF9]">
-      <div className="text-center">
-        <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-t-2 border-[#3E2723] mx-auto"></div>
-        <p className="mt-4 text-sm text-[#6f655d]">Fetching product data...</p>
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#FAFAF9] text-[#1C1C1C]">
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-12 w-12 animate-spin rounded-full border-4 border-[#C6A75E] border-t-transparent" />
+          <p className="text-xs font-black uppercase tracking-widest text-neutral-400">Fetching Product Details...</p>
+        </div>
       </div>
-    </div>
-  );
+    );
+  }
 
   if (error) return (
     <div className="flex h-screen items-center justify-center bg-[#FAFAF9]">

@@ -1,5 +1,6 @@
 "use client"
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   AlertCircle,
   BarChart3,
@@ -19,6 +20,9 @@ import {
   UserCog,
   Users,
   X,
+  Box,
+  ClipboardCheck,
+  UserCheck,
 } from 'lucide-react';
 
 const AdminCharts = lazy(() => import('@/components/AdminCharts'));
@@ -34,10 +38,10 @@ import ArtisansSection from '@/components/ui/navSections/ArtisansSection';
 import ProductsSection from '@/components/ui/navSections/ProductsSection';
 import OrdersSection from '@/components/ui/navSections/OrdersSection';
 import ApprovalsSection from '@/components/ui/navSections/ApprovalsSection';
-import AnalyticsSection from '@/components/ui/navSections/AnalyticsSection';
-import ReportsSection from '@/components/ui/navSections/ReportsSection';
-import SettingsSection from '@/components/ui/navSections/SettingsSection';
 import GenericSection from '@/components/ui/navSections/GenericSection';
+import SamplesSection from '@/components/ui/navSections/SamplesSection';
+import VerificationTasksSection from '@/components/ui/navSections/VerificationTasksSection';
+import AgentsSection from '@/components/ui/navSections/AgentsSection';
 /* Admin Dashboard Overview
  - This component composes the main admin interface and several panels.
  - Mapping of admin responsibilities to UI areas in this file:
@@ -83,8 +87,11 @@ const navigation: NavItem[] = [
   { label: 'Dashboard', icon: Home },
   { label: 'Users', icon: Users },
   { label: 'Artisans', icon: UserCog },
+  { label: 'Samples', icon: Box },
   { label: 'Products', icon: Package },
   { label: 'Orders', icon: ShoppingCart },
+  { label: 'Verification Tasks', icon: ClipboardCheck },
+  { label: 'Agents', icon: UserCheck },
   { label: 'Approvals', icon: ShieldCheck },
   { label: 'Analytics', icon: BarChart3 },
   { label: 'Reports', icon: FileText },
@@ -161,7 +168,20 @@ function statusClass(status: any) {
 }
 
 export default function App() {
+  const router = useRouter();
   const [activeNav, setActiveNav] = useState('Dashboard');
+
+  const handleNavChange = useCallback((nav: string) => {
+    if (nav === 'Analytics') {
+      router.push('/admin/analytics');
+    } else if (nav === 'Reports') {
+      router.push('/admin/report');
+    } else if (nav === 'Settings') {
+      router.push('/admin/setting');
+    } else {
+      setActiveNav(nav);
+    }
+  }, [router]);
   const [collapsed, setCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -170,15 +190,16 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRange, setSelectedRange] = useState('Last 30 days');
   const [feedbackMessage, setFeedbackMessage] = useState('');
-  const [detailsOrder, setDetailsOrder] = useState<Order | null>(null);
-  
-  // Centralized Orders State
+
+  // Centralized Data States
   const [globalOrders, setGlobalOrders] = useState<any[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(true);
+  const [globalUsers, setGlobalUsers] = useState<any[]>([]);
+  const [usersLoading, setUsersLoading] = useState(true);
 
   const [approvalItems, setApprovalItems] = useState<ApprovalItem[]>(initialApprovalItems);
   const [notifications, setNotifications] = useState<NotificationItem[]>(initialNotifications);
-  
+
   useEffect(() => {
     const fetchGlobalOrders = async () => {
       try {
@@ -207,6 +228,32 @@ export default function App() {
       }
     };
     fetchGlobalOrders();
+
+    const fetchGlobalUsers = async () => {
+      try {
+        const base = (process.env.NEXT_PUBLIC_BASE_URL ?? '').replace(/\/$/, '') || 'http://localhost:4000/api/v1';
+        const token = localStorage.getItem('token');
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (token) headers.Authorization = `Bearer ${token}`;
+
+        const res = await fetch(`${base}/admin/users`, { headers });
+        if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+        const json = await res.json();
+
+        let items: any[] = [];
+        if (json.data && Array.isArray(json.data.items)) items = json.data.items;
+        else if (Array.isArray(json)) items = json;
+        else if (json.data && Array.isArray(json.data)) items = json.data;
+        else if (json.users && Array.isArray(json.users)) items = json.users;
+
+        setGlobalUsers(items);
+      } catch (err) {
+        console.error('Failed to fetch global users', err);
+      } finally {
+        setUsersLoading(false);
+      }
+    };
+    fetchGlobalUsers();
   }, []);
 
   const rowHeight = 56;
@@ -264,8 +311,11 @@ export default function App() {
   const sectionDescriptions: Record<string, string> = {
     Users: 'Manage customer and agent accounts, activity, and access.',
     Artisans: 'Review artisan profiles, onboarding progress, and verification.',
+    Samples: 'Manage and review product samples submitted by artisans.',
     Products: 'Oversee listings, quality checks, and marketplace assortment.',
     Orders: 'Track fulfillment performance and delivery pipeline.',
+    'Verification Tasks': 'Monitor and assign physical verification tasks to agents.',
+    Agents: 'Manage field agents and their active assignments.',
     Approvals: 'Process pending artisan, product, and verification requests.',
     Analytics: 'Inspect growth, conversion, and category performance.',
     Reports: 'Resolve reports, moderation flags, and policy incidents.',
@@ -286,9 +336,8 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[#FAFAF9] text-[#1C1C1C]" style={{ fontFamily: 'Inter, sans-serif' }}>
       <aside
-        className={`fixed inset-y-0 left-0 z-40 border-r border-[#e8e0d2] bg-[#fdfbf7] px-3 py-5 transition-all duration-300 ${
-          collapsed ? 'lg:w-20' : 'lg:w-72'
-        } w-72 ${mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
+        className={`fixed inset-y-0 left-0 z-40 border-r border-[#e8e0d2] bg-[#fdfbf7] px-3 py-5 transition-all duration-300 ${collapsed ? 'lg:w-20' : 'lg:w-72'
+          } w-72 ${mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
       >
         <div className="flex items-center justify-between px-2">
           <div className="flex items-center gap-3">
@@ -311,7 +360,7 @@ export default function App() {
         <ActivNavs
           navigation={navigation}
           activeNav={activeNav}
-          setActiveNav={setActiveNav}
+          setActiveNav={handleNavChange}
           collapsed={collapsed}
           setMobileSidebarOpen={setMobileSidebarOpen}
         />
@@ -395,7 +444,7 @@ export default function App() {
                     className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm transition hover:bg-[#f8f2e7]"
                     onClick={() => {
                       if (result.type === 'Section') {
-                        setActiveNav(result.name);
+                        handleNavChange(result.name);
                       }
                       setSearchQuery('');
                       showFeedback(`Opened ${result.type}: ${result.name}`);
@@ -484,12 +533,12 @@ export default function App() {
             Dashboard: DashboardSection,
             Users: UsersSection,
             Artisans: ArtisansSection,
+            Samples: SamplesSection,
             Products: ProductsSection,
             Orders: OrdersSection,
+            'Verification Tasks': VerificationTasksSection,
+            Agents: AgentsSection,
             Approvals: ApprovalsSection,
-            Analytics: AnalyticsSection,
-            Reports: ReportsSection,
-            Settings: SettingsSection,
           };
           const ActiveSection = SectionMap[activeNav] ?? GenericSection;
           return (
@@ -509,60 +558,12 @@ export default function App() {
               containerHeight={containerHeight}
               orders={globalOrders}
               ordersLoading={ordersLoading}
-              setDetailsOrder={setDetailsOrder}
+              users={globalUsers}
+              usersLoading={usersLoading}
             />
           );
         })()}
       </div>
-
-      {detailsOrder && (
-        <div className="fixed inset-0 z-50 flex justify-end bg-[#1c1c1c]/30" onClick={() => setDetailsOrder(null)}>
-          <aside
-            className="h-full w-full max-w-md bg-[#fffdf9] p-6 shadow-2xl"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="flex items-center justify-between">
-              <h3 className="text-xl uppercase tracking-[0.04em]" style={{ fontFamily: '"Druk Wide", "Arial Black", sans-serif' }}>
-                Order Details
-              </h3>
-              <button className="text-[#6f6258]" onClick={() => setDetailsOrder(null)}>
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            <div className="mt-6 space-y-4 text-sm">
-              <div>
-                <p className="text-xs uppercase tracking-[0.1em] text-[#85786d]">Order ID</p>
-                <p className="mt-1 font-medium">{detailsOrder.id}</p>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-[0.1em] text-[#85786d]">Customer</p>
-                <p className="mt-1 font-medium">{typeof (detailsOrder as any).customer === 'string' ? (detailsOrder as any).customer : ((detailsOrder as any).customer ? `${(detailsOrder as any).customer.firstName ?? ''} ${(detailsOrder as any).customer.lastName ?? ''}`.trim() || (detailsOrder as any).customer.email || (detailsOrder as any).customerId || '' : '')}</p>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-[0.1em] text-[#85786d]">Amount</p>
-                <p className="mt-1 font-medium">{((detailsOrder as any).totalAmount ?? (detailsOrder as any).amount ?? (detailsOrder as any).subtotalAmount) ? `${(detailsOrder as any).totalAmount ?? (detailsOrder as any).amount ?? (detailsOrder as any).subtotalAmount}${(detailsOrder as any).currency ? ` ${(detailsOrder as any).currency}` : ''}` : ''}</p>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-[0.1em] text-[#85786d]">Status</p>
-                <span className={`mt-1 inline-flex rounded-full px-2 py-1 text-xs ${statusClass(detailsOrder.status)}`}>
-                  {detailsOrder.status}
-                </span>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-[0.1em] text-[#85786d]">Date</p>
-                <p className="mt-1 font-medium">{(detailsOrder as any).createdAt ?? (detailsOrder as any).paidAt ?? detailsOrder.date ?? ''}</p>
-              </div>
-            </div>
-            <button
-              className="mt-8 w-full rounded-xl bg-[#3E2723] py-3 text-sm text-[#FAFAF9] transition hover:opacity-90"
-              style={{ fontFamily: 'Aeonik, Inter, sans-serif' }}
-              onClick={() => showFeedback(`Opened full record for ${detailsOrder.id}`)}
-            >
-              Open Full Record
-            </button>
-          </aside>
-        </div>
-      )}
 
       {feedbackMessage && (
         <div className="fixed bottom-5 right-5 z-50 rounded-xl border border-[#d8ccb9] bg-white px-4 py-3 text-sm shadow-[0_10px_24px_rgba(62,39,35,0.12)]">

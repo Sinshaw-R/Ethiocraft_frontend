@@ -6,40 +6,44 @@ import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 import { X } from 'lucide-react';
 
-export default function UsersSection(props: any) {
+export default function AgentsSection(props: any) {
   const router = useRouter();
   const { users = [], usersLoading = false } = props;
-  const [selectedUser, setSelectedUser] = useState<any | null>(null);
+  const [selectedAgent, setSelectedAgent] = useState<any | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
-  const rows = users.map((u: any) => {
+  // Filter for Agents
+  const agents = users.filter((u: any) => u.role === 'VERIFICATION_AGENT');
+
+  const rows = agents.map((u: any) => {
     const name = u.name || `${u.firstName || ''} ${u.lastName || ''}`.trim() || 'Unknown';
     const statusLabel = u.status || (u.isActive !== undefined ? (u.isActive ? 'Active' : 'Inactive') : '—');
 
     return {
       id: u.id || u._id || 'N/A',
       name: name,
-      owner: u.email || u.role || '—',
+      owner: u.email || '—',
       status: statusLabel,
       updated: u.updatedAt || u.createdAt ? new Date(u.updatedAt || u.createdAt).toLocaleString() : 'N/A',
+      raw: u
     };
   });
 
   const displayRows = usersLoading
-    ? [{ id: '—', name: 'Loading users…', owner: '—', status: '—', updated: '—' }]
+    ? [{ id: '—', name: 'Loading agents…', owner: '—', status: '—', updated: '—' }]
     : rows.length
       ? rows
-      : [{ id: '—', name: 'No users available', owner: '—', status: '—', updated: '—' }];
+      : [{ id: '—', name: 'No agents found', owner: '—', status: '—', updated: '—' }];
 
   const handleViewDetails = (row: any) => {
     if (row.id === '—') return;
-    setSelectedUser(row);
+    setSelectedAgent(row.raw || row);
     setIsDrawerOpen(true);
   };
 
   const handleOpenFullRecord = () => {
-    if (selectedUser?.id) {
-      router.push(`/admin/users/${selectedUser.id}`);
+    if (selectedAgent?.id) {
+      router.push(`/admin/users/${selectedAgent.id}`);
       setIsDrawerOpen(false);
     }
   };
@@ -48,8 +52,8 @@ export default function UsersSection(props: any) {
     <>
       <GenericSection
         {...props}
-        title="Users"
-        description={props.sectionDescriptions?.Users}
+        title="Agents"
+        description={props.sectionDescriptions?.Agents}
         placeholderRows={displayRows}
         loading={usersLoading}
         showFeedback={props.showFeedback}
@@ -61,7 +65,7 @@ export default function UsersSection(props: any) {
         <DrawerContent className="fixed bottom-0 right-0 top-0 mt-0 h-full w-full max-w-md rounded-none border-l border-[#e8dece] bg-[#fffdf9]">
           <DrawerHeader className="flex items-center justify-between border-b border-[#e8dece] p-6">
             <DrawerTitle className="text-xl uppercase tracking-[0.04em]" style={{ fontFamily: '"Druk Wide", "Arial Black", sans-serif' }}>
-              User Overview
+              Agent Overview
             </DrawerTitle>
             <DrawerClose asChild>
               <Button variant="ghost" size="icon" className="h-8 w-8 text-[#6f6258]">
@@ -71,30 +75,30 @@ export default function UsersSection(props: any) {
             </DrawerClose>
           </DrawerHeader>
           <div className="flex-1 overflow-y-auto p-6">
-            {selectedUser ? (
+            {selectedAgent ? (
               <div className="space-y-6 text-sm">
                 <div>
-                  <p className="text-xs uppercase tracking-[0.1em] text-[#85786d]">User ID</p>
-                  <p className="mt-1 font-medium">{selectedUser.id}</p>
+                  <p className="text-xs uppercase tracking-[0.1em] text-[#85786d]">Agent ID</p>
+                  <p className="mt-1 font-medium">{selectedAgent.id}</p>
                 </div>
                 <div>
                   <p className="text-xs uppercase tracking-[0.1em] text-[#85786d]">Name</p>
-                  <p className="mt-1 font-medium">{selectedUser.name}</p>
+                  <p className="mt-1 font-medium">{`${selectedAgent.firstName || ''} ${selectedAgent.lastName || ''}`.trim()}</p>
                 </div>
                 <div>
-                  <p className="text-xs uppercase tracking-[0.1em] text-[#85786d]">Email / Role</p>
-                  <p className="mt-1 font-medium">{selectedUser.owner}</p>
+                  <p className="text-xs uppercase tracking-[0.1em] text-[#85786d]">Email</p>
+                  <p className="mt-1 font-medium">{selectedAgent.email}</p>
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-[0.1em] text-[#85786d]">Role</p>
+                  <p className="mt-1 font-medium">Verification Agent</p>
                 </div>
                 <div>
                   <p className="text-xs uppercase tracking-[0.1em] text-[#85786d]">Status</p>
-                  <p className="mt-1 font-medium">{selectedUser.status}</p>
-                </div>
-                <div>
-                  <p className="text-xs uppercase tracking-[0.1em] text-[#85786d]">Member Since</p>
-                  <p className="mt-1 font-medium">{selectedUser.updated}</p>
+                  <p className="mt-1 font-medium">{selectedAgent.status}</p>
                 </div>
               </div>
-            ) : <p className="text-center text-[#85786d]">No user selected.</p>}
+            ) : <p className="text-center text-[#85786d]">No agent selected.</p>}
           </div>
           <DrawerFooter className="border-t border-[#e8dece] p-6">
             <Button onClick={handleOpenFullRecord} className="w-full bg-[#3E2723] text-white hover:opacity-90">Open Full Record</Button>

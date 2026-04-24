@@ -214,6 +214,17 @@ export default function App() {
   const currentShipping = orderData?.shippingAddress ?? shippingAddress;
   const currentActivity = orderData?.activityLog ?? activityLog;
 
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#FAFAF9] text-[#1C1C1C]">
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-12 w-12 animate-spin rounded-full border-4 border-[#C6A75E] border-t-transparent" />
+          <p className="text-xs font-black uppercase tracking-widest text-neutral-400">Loading Order Details...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#FAFAF9] px-4 py-6 text-[#1C1C1C] md:px-8" style={{ fontFamily: 'Inter, sans-serif' }}>
       <div className="mx-auto max-w-[1440px]">

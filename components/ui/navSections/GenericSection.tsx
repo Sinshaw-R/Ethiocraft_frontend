@@ -1,11 +1,12 @@
-"use client"
 import { Button } from '@/components/ui/button';
 import React from 'react';
+import { Inbox } from 'lucide-react';
 
 type Props = {
   title: string;
   description?: string;
   placeholderRows?: any[];
+  loading?: boolean;
   showFeedback?: (m: string) => void;
   setActiveNav?: (s: string) => void;
   onViewDetails?: (row: any) => void; // New prop for view details action
@@ -15,6 +16,7 @@ export default function GenericSection({
   title,
   description,
   placeholderRows = [],
+  loading = false,
   showFeedback,
   setActiveNav,
   onViewDetails,
@@ -78,22 +80,51 @@ export default function GenericSection({
             {onViewDetails && <span className="truncate text-center">Actions</span>}
           </div>
           <div className="divide-y divide-[#f1e8da]" style={{ fontFamily: 'Inter, sans-serif' }}>
-            {(placeholderRows || []).map((row) => (
-              <div key={row.id} className="grid min-w-[800px] grid-cols-[1fr_1.6fr_1fr_1fr_1fr_0.5fr] gap-4 items-center px-4 py-3 text-sm transition hover:bg-[#fcf8f0] lg:min-w-full">
-                <span className="min-w-0 truncate font-medium text-[#3E2723]">{row.id}</span>
-                <span className="min-w-0 truncate" title={row.name}>{row.name}</span>
-                <span className="min-w-0 truncate" title={row.owner}>{row.owner}</span>
-                <span className="min-w-0">
-                  <span className="inline-block max-w-full truncate rounded-full bg-[#f5efe2] px-2 py-1 text-xs text-[#6b5f53]">{row.status}</span>
-                </span>
-                <span className="min-w-0 truncate text-[#766a60]">{row.updated}</span>
-                {onViewDetails && (
-                  <div className="flex justify-center">
-                    <Button variant="ghost" size="sm" onClick={() => onViewDetails(row)}>View</Button>
-                  </div>
-                )}
+            {loading ? (
+              <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
+                <div className="relative mb-4">
+                  <div className="h-12 w-12 animate-spin rounded-full border-4 border-[#c6a75e] border-t-transparent" />
+                  <div className="absolute inset-0 h-12 w-12 rounded-full border-4 border-[#c6a75e]/10" />
+                </div>
+                <h3 className="text-xs font-black uppercase tracking-[0.2em] text-[#c6a75e] animate-pulse">Syncing {title}</h3>
+                <p className="mt-2 text-[10px] text-[#85786d] uppercase tracking-widest font-bold">Please wait while we refresh the data feed</p>
               </div>
-            ))}
+            ) : placeholderRows.length === 1 && placeholderRows[0].id === '—' && !placeholderRows[0].name.includes('Loading') ? (
+              <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[#f8f4ec] mb-4">
+                  <Inbox className="h-10 w-10 text-[#c6a75e]" />
+                </div>
+                <h3 className="text-lg font-semibold text-[#3E2723]" style={{ fontFamily: 'Aeonik, Inter, sans-serif' }}>No Records Found</h3>
+                <p className="mt-2 max-w-xs text-sm text-[#85786d]">
+                  We couldn't find any data for this section. Try creating a new record or importing data to get started.
+                </p>
+                <div className="mt-6">
+                  <Button 
+                    className="bg-[#3E2723] text-white hover:opacity-90 rounded-xl px-6"
+                    onClick={() => showFeedback?.(`Action: Create new ${title.slice(0, -1).toLowerCase()}`)}
+                  >
+                    Create First {title.slice(0, -1)}
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              (placeholderRows || []).map((row) => (
+                <div key={row.id} className="grid min-w-[800px] grid-cols-[1fr_1.6fr_1fr_1fr_1fr_0.5fr] gap-4 items-center px-4 py-3 text-sm transition hover:bg-[#fcf8f0] lg:min-w-full">
+                  <span className="min-w-0 truncate font-medium text-[#3E2723]">{row.id}</span>
+                  <span className="min-w-0 truncate" title={row.name}>{row.name}</span>
+                  <span className="min-w-0 truncate" title={row.owner}>{row.owner}</span>
+                  <span className="min-w-0">
+                    <span className="inline-block max-w-full truncate rounded-full bg-[#f5efe2] px-2 py-1 text-xs text-[#6b5f53]">{row.status}</span>
+                  </span>
+                  <span className="min-w-0 truncate text-[#766a60]">{row.updated}</span>
+                  {onViewDetails && (
+                    <div className="flex justify-center">
+                      <Button variant="ghost" size="sm" onClick={() => onViewDetails(row)}>View</Button>
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
           </div>
         </div>
       </section>

@@ -1,55 +1,65 @@
 "use client"
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import GenericSection from './GenericSection';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerClose, DrawerFooter } from '@/components/ui/drawer';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 import { X } from 'lucide-react';
 
-export default function OrdersSection(props: any) {
-  const orders = props.orders || [];
-  const loading = props.ordersLoading;
+export default function SamplesSection(props: any) {
   const router = useRouter();
-
-  const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
+  const [samples, setSamples] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedSample, setSelectedSample] = useState<any | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
-  const rows = (orders || []).map((o: any, idx: number) => {
-    const id = o?.id ?? o?._id ?? o?.orderId ?? `unknown-${idx + 1}`;
-    const name =
-      o?.title ??
-      o?.productTitle ??
-      o?.product?.title ??
-      o?.customer?.name ??
-      o?.customerName ??
-      'Order not available';
-    const owner =
-      o?.owner ??
-      o?.vendor ??
-      (o?.artisan ? `${o.artisan.firstName ?? ''} ${o.artisan.lastName ?? ''}`.trim() : undefined) ??
-      o?.artisan?.artisanProfile?.shopName ??
-      'Order not available';
-    const status = o?.status ?? o?.orderStatus ?? o?.state ?? 'Order not available';
-    const updatedRaw =
-      o?.updatedAt ?? o?.updated ?? o?.modifiedAt ?? o?.publishedAt ?? o?.createdAt;
-    const updated = updatedRaw ? new Date(updatedRaw).toLocaleString() : 'Order not available';
-    return { id, name, owner, status, updated };
-  });
+  useEffect(() => {
+    const fetchSamples = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch(`http://localhost:4000/api/v1/admin/products/samples`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        if (!res.ok) throw new Error('Failed to fetch');
+        const json = await res.json();
+        
+        if (json.data && Array.isArray(json.data)) {
+          setSamples(json.data);
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchSamples();
+  }, []);
+
+  const rows = samples.map((s: any) => ({
+    id: s.id,
+    name: s.title || 'Untitled',
+    owner: s.artisan ? `${s.artisan.firstName || ''} ${s.artisan.lastName || ''}`.trim() : 'Unknown',
+    status: s.status || 'Unknown',
+    updated: s.updatedAt ? new Date(s.updatedAt).toLocaleString() : 'N/A',
+  }));
 
   const placeholderRows = loading
-    ? [{ id: '—', name: 'Loading orders…', owner: '—', status: '—', updated: '—' }]
+    ? [{ id: '—', name: 'Loading samples…', owner: '—', status: '—', updated: '—' }]
     : rows.length
     ? rows
-    : [{ id: '—', name: 'Order not available', owner: 'Order not available', status: 'Order not available', updated: 'Order not available' }];
+    : [{ id: '—', name: 'No samples available', owner: '—', status: '—', updated: '—' }];
 
   const handleViewDetails = (row: any) => {
-    setSelectedOrder(row);
+    if (row.id === '—') return;
+    setSelectedSample(row);
     setIsDrawerOpen(true);
   };
 
   const handleOpenFullRecord = () => {
-    if (selectedOrder?.id) {
-      router.push(`/admin/orders/${selectedOrder.id}`);
+    if (selectedSample?.id) {
+      router.push(`/admin/sample/${selectedSample.id}`);
       setIsDrawerOpen(false);
     }
   };
@@ -57,8 +67,8 @@ export default function OrdersSection(props: any) {
   return (
     <>
       <GenericSection
-        title="Orders"
-        description={props.sectionDescriptions?.Orders}
+        title="Samples"
+        description={props.sectionDescriptions?.Samples}
         placeholderRows={placeholderRows}
         loading={loading}
         showFeedback={props.showFeedback}
@@ -70,7 +80,7 @@ export default function OrdersSection(props: any) {
         <DrawerContent className="fixed bottom-0 right-0 top-0 mt-0 h-full w-full max-w-md rounded-none border-l border-[#e8dece] bg-[#fffdf9]">
           <DrawerHeader className="flex items-center justify-between border-b border-[#e8dece] p-6">
             <DrawerTitle className="text-xl uppercase tracking-[0.04em]" style={{ fontFamily: '"Druk Wide", "Arial Black", sans-serif' }}>
-              Order Overview
+              Sample Overview
             </DrawerTitle>
             <DrawerClose asChild>
               <Button variant="ghost" size="icon" className="h-8 w-8 text-[#6f6258]">
@@ -80,30 +90,30 @@ export default function OrdersSection(props: any) {
             </DrawerClose>
           </DrawerHeader>
           <div className="flex-1 overflow-y-auto p-6">
-            {selectedOrder ? (
+            {selectedSample ? (
               <div className="space-y-6 text-sm">
                 <div>
-                  <p className="text-xs uppercase tracking-[0.1em] text-[#85786d]">Order ID</p>
-                  <p className="mt-1 font-medium">{selectedOrder.id}</p>
+                  <p className="text-xs uppercase tracking-[0.1em] text-[#85786d]">Sample ID</p>
+                  <p className="mt-1 font-medium">{selectedSample.id}</p>
                 </div>
                 <div>
-                  <p className="text-xs uppercase tracking-[0.1em] text-[#85786d]">Customer / Reference</p>
-                  <p className="mt-1 font-medium">{selectedOrder.name}</p>
+                  <p className="text-xs uppercase tracking-[0.1em] text-[#85786d]">Title</p>
+                  <p className="mt-1 font-medium">{selectedSample.name}</p>
                 </div>
                 <div>
-                  <p className="text-xs uppercase tracking-[0.1em] text-[#85786d]">Shop / Artisan</p>
-                  <p className="mt-1 font-medium">{selectedOrder.owner}</p>
+                  <p className="text-xs uppercase tracking-[0.1em] text-[#85786d]">Artisan</p>
+                  <p className="mt-1 font-medium">{selectedSample.owner}</p>
                 </div>
                 <div>
                   <p className="text-xs uppercase tracking-[0.1em] text-[#85786d]">Status</p>
-                  <p className="mt-1 font-medium">{selectedOrder.status}</p>
+                  <p className="mt-1 font-medium">{selectedSample.status}</p>
                 </div>
                 <div>
                   <p className="text-xs uppercase tracking-[0.1em] text-[#85786d]">Last Activity</p>
-                  <p className="mt-1 font-medium">{selectedOrder.updated}</p>
+                  <p className="mt-1 font-medium">{selectedSample.updated}</p>
                 </div>
               </div>
-            ) : <p className="text-center text-[#85786d]">No order selected.</p>}
+            ) : <p className="text-center text-[#85786d]">No sample selected.</p>}
           </div>
           <DrawerFooter className="border-t border-[#e8dece] p-6">
             <Button onClick={handleOpenFullRecord} className="w-full bg-[#3E2723] text-white hover:opacity-90">Open Full Record</Button>

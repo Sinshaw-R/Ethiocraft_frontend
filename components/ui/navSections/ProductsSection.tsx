@@ -85,6 +85,7 @@ export default function ProductsSection(props: any) {
         title="Products"
         description={props.sectionDescriptions?.Products}
         placeholderRows={placeholderRows}
+        loading={loading}
         showFeedback={props.showFeedback}
         setActiveNav={props.setActiveNav}
         onViewDetails={handleViewDetails}

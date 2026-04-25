@@ -6,6 +6,7 @@ import { Header } from '@/components/shared/header';
 import { Footer } from '@/components/shared/footer';
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
+import { Button } from '@/components/ui/button';
 
 type CartItem = {
   id: number;
@@ -260,11 +261,12 @@ export default function App() {
                     <p className="font-aeonik text-2xl font-semibold">${total.toFixed(2)}</p>
                   </div>
 
-                  <button
-                    className="font-aeonik mt-6 h-12 w-full bg-[#1C1C1C] text-sm text-[#FAFAF9] transition-colors hover:bg-[#2a2a2a] uppercase tracking-widest"
-                  >
-                    Proceed to Checkout
-                  </button>
+                <Button asChild className="w-full bg-primary text-primary-foreground hover:bg-primary/90 h-12 font-medium">
+                  <Link href="/cart/checkout">
+                  Proceed to Checkout
+                  </Link>
+                </Button>
+                
                   <Link
                     href="/products"
                     className="font-aeonik mt-3 flex h-11 w-full items-center justify-center border border-[#cfc8bb] bg-transparent text-xs uppercase tracking-[0.08em] text-[#1C1C1C] transition-colors hover:border-[#C6A75E] hover:text-[#C6A75E]"

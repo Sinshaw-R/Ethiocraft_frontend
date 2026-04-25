@@ -7,6 +7,7 @@ import { Footer } from '@/components/shared/footer';
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import ChatSupport from '@/components/ChatSupport';
 
 type CartItem = {
   id: number;
@@ -290,6 +291,7 @@ export default function App() {
         )}
       </main>
       <Footer />
+      <ChatSupport />
 
       <style jsx>{`
         .font-druk-medium {

@@ -5,6 +5,7 @@ import { Footer } from '@/components/shared/footer';
 import CheckoutPage from '@/components/CheckoutPage';
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
+import ChatSupport from '@/components/ChatSupport';
 
 
 
@@ -13,6 +14,7 @@ export default function CheckoutPageRoute() {
     <main className="min-h-screen bg-white">
       <Header />
       <CheckoutPage />
+      <ChatSupport />
       <Footer />
     </main>
   )

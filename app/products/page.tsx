@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Header } from '@/components/shared/header';
 import { Footer } from '@/components/shared/footer';
 import { Button } from '@/components/ui/button';
@@ -112,6 +113,7 @@ const regionsList = ['Addis Ababa', 'Oromia', 'SNNPR', 'Amhara', 'Tigray'];
 const materialsList = ['Clay', 'Cotton', 'Silver', 'Straw', 'Leather'];
 
 export default function productPage() {
+  const searchParams = useSearchParams();
   const [sortBy, setSortBy] = useState<'curated' | 'price-low' | 'price-high' | 'newest' | 'rating-high' | 'rating-low'>('curated');
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [visibleIds, setVisibleIds] = useState<number[]>([]);
@@ -123,6 +125,30 @@ export default function productPage() {
   const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
   const [selectedMaterials, setSelectedMaterials] = useState<string[]>([]);
   const [priceRange, setPriceRange] = useState([0, 500]);
+
+  // Initialize filters from URL params
+  useEffect(() => {
+    const category = searchParams.get('category');
+    if (category && categories.includes(category as any)) {
+      setActiveCategory(category as any);
+    }
+
+    const region = searchParams.get('region');
+    if (region && regionsList.includes(region)) {
+      setSelectedRegions([region]);
+    }
+
+    const material = searchParams.get('material');
+    if (material && materialsList.includes(material)) {
+      setSelectedMaterials([material]);
+    }
+
+    const minPrice = searchParams.get('minPrice');
+    const maxPrice = searchParams.get('maxPrice');
+    if (minPrice && maxPrice) {
+      setPriceRange([parseInt(minPrice), parseInt(maxPrice)]);
+    }
+  }, [searchParams]);
 
   const filteredProducts = useMemo(() => {
     // 1. Apply Filters

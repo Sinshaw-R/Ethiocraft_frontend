@@ -27,38 +27,13 @@ export default function MegaMenu({ textColor }: { textColor: string }) {
     }
   }, [isOpen])
 
-  const categories: MenuCategory[] = [
-    {
-      name: 'Pottery & Ceramics',
-      items: ['Handmade Pots', 'Decorative Plates', 'Vases', 'Functional Ware'],
-    },
-    {
-      name: 'Weaving & Textiles',
-      items: ['Hand-Woven Fabric', 'Traditional Shawls', 'Scarves', 'Rugs'],
-    },
-    {
-      name: 'Leatherwork',
-      items: ['Leather Bags', 'Shoes', 'Belts', 'Leather Accessories'],
-    },
-    {
-      name: 'Metalwork',
-      items: ['Silver Jewelry', 'Copper Items', 'Bronze Art', 'Metal Crafts'],
-    },
-    {
-      name: 'Basketry',
-      items: ['Storage Baskets', 'Decorative Baskets', 'Food Baskets', 'Woven Art'],
-    },
-    {
-      name: 'Jewelry & Beadwork',
-      items: ['Traditional Necklaces', 'Beaded Bracelets', 'Earrings', 'Rings'],
-    },
-  ]
+  const categories: string[] = ['Textiles', 'Jewelry', 'Home', 'Accessories']
 
-  const regions = ['Addis Ababa', 'Hawassa', 'Gondar', 'Lalibela', 'Dire Dawa', 'Axum']
+  const regions = ['Addis Ababa', 'Oromia', 'SNNPR', 'Amhara', 'Tigray']
 
   const priceRanges = ['0-500 ETB', '500-1000 ETB', '1000-2000 ETB', '2000+ ETB']
 
-  const culturalTags = ['Religious', 'Ceremonial', 'Daily Use', 'Decorative', 'Gifts']
+  const materials = ['Clay', 'Cotton', 'Silver', 'Straw', 'Leather']
 
   return (
     <div className="inline-block">
@@ -89,25 +64,18 @@ export default function MegaMenu({ textColor }: { textColor: string }) {
                 {/* Categories Column */}
                 <div>
                   <h3 className="font-serif font-bold text-foreground mb-4 text-lg">Categories</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <ul className="space-y-2">
                     {categories.map((category) => (
-                      <div key={category.name}>
-                        <p className="font-medium text-foreground mb-2">{category.name}</p>
-                        <ul className="space-y-1">
-                          {category.items.map((item) => (
-                            <li key={item}>
-                              <Link
-                                href={`/products?category=${encodeURIComponent(category.name)}&subcategory=${encodeURIComponent(item)}`}
-                                className="text-sm text-muted-foreground hover:text-primary transition-colors"
-                              >
-                                {item}
-                              </Link>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
+                      <li key={category}>
+                        <Link
+                          href={`/products?category=${encodeURIComponent(category)}`}
+                          className="text-sm text-muted-foreground hover:text-primary transition-colors block"
+                        >
+                          {category}
+                        </Link>
+                      </li>
                     ))}
-                  </div>
+                  </ul>
                 </div>
 
                 {/* Regions Column */}
@@ -128,30 +96,35 @@ export default function MegaMenu({ textColor }: { textColor: string }) {
 
                   <h3 className="font-serif font-bold text-foreground mb-4 text-lg mt-6">Price Range</h3>
                   <ul className="space-y-2">
-                    {priceRanges.map((range) => (
-                      <li key={range}>
-                        <Link
-                          href={`/products?priceRange=${encodeURIComponent(range)}`}
-                          className="text-sm text-muted-foreground hover:text-primary transition-colors block"
-                        >
-                          {range}
-                        </Link>
-                      </li>
-                    ))}
+                    {priceRanges.map((range) => {
+                      const [min, max] = range === '2000+ ETB' 
+                        ? [2000, 10000] 
+                        : range.split('-').map(r => parseInt(r.replace(' ETB', '')));
+                      return (
+                        <li key={range}>
+                          <Link
+                            href={`/products?minPrice=${min}&maxPrice=${max}`}
+                            className="text-sm text-muted-foreground hover:text-primary transition-colors block"
+                          >
+                            {range}
+                          </Link>
+                        </li>
+                      );
+                    })}
                   </ul>
                 </div>
 
-                {/* Cultural Tags Column */}
+                {/* Materials Column */}
                 <div>
-                  <h3 className="font-serif font-bold text-foreground mb-4 text-lg">Cultural Tags</h3>
+                  <h3 className="font-serif font-bold text-foreground mb-4 text-lg">Materials</h3>
                   <ul className="space-y-2 mb-6">
-                    {culturalTags.map((tag) => (
-                      <li key={tag}>
+                    {materials.map((material) => (
+                      <li key={material}>
                         <Link
-                          href={`/products?tag=${encodeURIComponent(tag)}`}
+                          href={`/products?material=${encodeURIComponent(material)}`}
                           className="text-sm text-muted-foreground hover:text-primary transition-colors block"
                         >
-                          {tag}
+                          {material}
                         </Link>
                       </li>
                     ))}

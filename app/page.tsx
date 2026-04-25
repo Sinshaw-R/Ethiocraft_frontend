@@ -9,6 +9,7 @@ import { Footer } from '@/components/shared/footer'
 import { Badge } from '@/components/ui/badge'
 import { StorySection } from '@/components/shared/story-section'
 import { useHeader } from '@/lib/header-context'
+import ChatSupport from '@/components/ChatSupport'
 
 export default function Home() {
   const { isHovered } = useHeader()
@@ -260,7 +261,7 @@ export default function Home() {
           </div>
         </div>
       </section>
-
+      <ChatSupport />
       <Footer />
     </>
   )

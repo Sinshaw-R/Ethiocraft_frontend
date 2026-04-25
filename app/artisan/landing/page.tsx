@@ -13,6 +13,7 @@ import {
   Sparkles,
   Store,
 } from 'lucide-react';
+import ChatSupport from '@/components/ChatSupport';
 
 type FeatureRow = {
   icon: ComponentType<{ className?: string }>;
@@ -407,8 +408,9 @@ export default function App() {
           <p className="mt-4 text-sm text-[#e9ddcc]">Takes only a few minutes to begin</p>
         </div>
       </section>
-
+          <ChatSupport />
       <Footer />
+      
       
       <style jsx global>{`
         .scrollbar-hide::-webkit-scrollbar { display: none; }

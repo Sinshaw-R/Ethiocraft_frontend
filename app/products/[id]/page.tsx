@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils'
 import React from 'react'
 import { createElement, useEffect, useState } from 'react';
 import Link from 'next/link';
+import ChatSupport from "@/components/ChatSupport";
 
 type DetailProduct = {
   id: number;
@@ -450,6 +451,7 @@ export default function App() {
           </div>
         </section>
       </main>
+      <ChatSupport />
       <Footer />
 
       <style jsx>{`

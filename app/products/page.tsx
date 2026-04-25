@@ -6,6 +6,7 @@ import { Footer } from '@/components/shared/footer';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import Link from 'next/link';
+import ChatSupport from '@/components/ChatSupport';
 
 type Product = {
   id: number;
@@ -453,6 +454,7 @@ export default function productPage() {
           </button>
         </div>
       </aside>
+      <ChatSupport />
       <Footer />
     </div>
   );

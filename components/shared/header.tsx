@@ -9,6 +9,7 @@ import { gsap } from 'gsap'
 import { useHeader } from '@/lib/header-context'
 import { Separator } from '@/components/ui/separator'
 import { useAuth } from '@/lib/auth-context'
+import MegaMenu from '../MegaMenu'
 
 /** Returns the dashboard URL for the currently logged-in role. */
 function dashboardForRole(role: string | null): string {
@@ -151,13 +152,9 @@ export function Header() {
             </Link>
 
             {/* Center Navigation */}
-            <nav className="hidden md:flex items-center gap-8 absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-              <Link 
-                href="/products" 
-                className={`font-aeonik text-[10px] lg:text-xs font-bold uppercase tracking-[0.2em] transition-colors hover:text-secondary ${textColor}`}
-              >
-                Category
-              </Link>
+            
+            <nav className="hidden md:flex items-center gap-8 relative">
+              <MegaMenu textColor={textColor}/>
               <button
                 onClick={handleSearchClick}
                 className={`font-aeonik text-[10px] lg:text-xs font-bold uppercase tracking-[0.2em] transition-colors hover:text-secondary ${textColor}`}

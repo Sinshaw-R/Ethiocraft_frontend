@@ -31,9 +31,12 @@ type SampleData = {
 
 type Agent = {
   id: string;
-  name: string;
-  region: string;
-  availability: 'AVAILABLE' | 'BUSY';
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  status?: string;
+  role?: string;
 };
 
 const tabs: TabKey[] = ['Details', 'Admin Review', 'Agent Verification', 'Activity Logs'];
@@ -62,11 +65,13 @@ type MediaItem = {
   thumb: string;
 };
 
-const agents: Agent[] = [
-  { id: 'AG-1', name: 'Abebe Kebede', region: 'Addis Ababa', availability: 'AVAILABLE' },
-  { id: 'AG-2', name: 'Hana Tesfaye', region: 'Sidama', availability: 'AVAILABLE' },
-  { id: 'AG-3', name: 'Dawit Bekele', region: 'Bahir Dar', availability: 'BUSY' },
-];
+function agentDisplayName(agent: Agent) {
+  return `${agent.firstName} ${agent.lastName}`;
+}
+
+function agentLocation(agent: Agent) {
+  return agent.phone ?? 'No contact info';
+}
 
 
 
@@ -108,6 +113,9 @@ export default function App() {
   const [selectedMediaId, setSelectedMediaId] = useState('');
   const [show3D, setShow3D] = useState(false);
   const [expandedDescription, setExpandedDescription] = useState(false);
+  const [agents, setAgents] = useState<Agent[]>([]);
+  const [agentsLoading, setAgentsLoading] = useState(false);
+  const [agentSearch, setAgentSearch] = useState('');
   const [selectedAgentId, setSelectedAgentId] = useState('');
   const [assignedAgent, setAssignedAgent] = useState<Agent | null>(null);
   const [showRejectModal, setShowRejectModal] = useState(false);
@@ -118,6 +126,29 @@ export default function App() {
     'Artisan submitted sample - 2026-04-10 09:48',
     'Admin opened review panel - 2026-04-17 10:12',
   ]);
+
+  // Fetch real verification agents from the backend
+  useEffect(() => {
+    const fetchAgents = async () => {
+      setAgentsLoading(true);
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch('http://localhost:4000/api/v1/admin/users/role/VERIFICATION_AGENT', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!res.ok) throw new Error('Failed to fetch agents');
+        const json = await res.json();
+        // Response shape: { data: { role, items: [...], meta: {...} } }
+        const list = json.data?.items ?? [];
+        setAgents(list);
+      } catch (err) {
+        console.error('Agents fetch error:', err);
+      } finally {
+        setAgentsLoading(false);
+      }
+    };
+    fetchAgents();
+  }, []);
 
   useEffect(() => {
     if (!id) return;
@@ -137,18 +168,20 @@ export default function App() {
         if (item) {
           setSample({
             id: item.id,
-            title: item.title || '',
+            title: item.title || 'Untitled Sample',
             artisan: item.artisan ? `${item.artisan.firstName} ${item.artisan.lastName}` : 'Unknown Artisan',
             artisanId: item.artisanId,
-            submittedAt: item.createdAt ? new Date(item.createdAt).toLocaleString() : '',
-            updatedAt: item.updatedAt ? new Date(item.updatedAt).toLocaleString() : '',
-            description: item.description || '',
-            culturalContext: item.culturalMetadata?.culturalSignificance || '',
+            submittedAt: item.createdAt ? new Date(item.createdAt).toLocaleString() : 'N/A',
+            updatedAt: item.updatedAt ? new Date(item.updatedAt).toLocaleString() : 'N/A',
+            description: item.description || 'No description provided.',
+            culturalContext: item.culturalMetadata?.culturalSignificance || 'No cultural context available.',
             suggestedPrice: Number(item.price) || 0,
-            materials: item.materials ? item.materials.join(', ') : '',
-            region: item.culturalMetadata?.origin || '',
-            technique: item.culturalMetadata?.technique || '',
-            dimensions: item.dimensions ? `${item.dimensions.width || item.dimensions.widthCm || 0}x${item.dimensions.height || item.dimensions.heightCm || 0}` : '',
+            materials: item.materials && item.materials.length > 0 ? item.materials.join(', ') : 'Not specified',
+            region: item.culturalMetadata?.origin || 'Unknown Region',
+            technique: item.culturalMetadata?.technique || 'Not specified',
+            dimensions: (item.dimensions && (item.dimensions.width || item.dimensions.height)) 
+              ? `${item.dimensions.width || item.dimensions.widthCm || 0}x${item.dimensions.height || item.dimensions.heightCm || 0} cm` 
+              : 'Dimensions unknown',
             culturalTags: item.tags || [],
           });
           if (item.status) {
@@ -277,13 +310,34 @@ export default function App() {
     }
   };
 
-  const assignAgent = () => {
+  const assignAgent = async () => {
     if (status !== 'APPROVED') return showToast('Approve sample before assigning an agent');
     const agent = agents.find((item) => item.id === selectedAgentId);
     if (!agent) return showToast('Select an agent to continue');
-    setAssignedAgent(agent);
-    addActivity(`Agent assigned: ${agent.name}`);
-    showToast(`Assignment sent to ${agent.name}`);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`http://localhost:4000/api/v1/admin/samples/${id}`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ assignedVerifierId: agent.id }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || 'Assignment failed');
+      }
+      const json = await res.json();
+      // Use the returned assignedVerifier if available, otherwise fall back to local agent object
+      const verifier: Agent = json.data?.assignedVerifier ?? agent;
+      setAssignedAgent(verifier);
+      addActivity(`Agent assigned: ${agentDisplayName(verifier)}`);
+      showToast(`Assignment sent to ${agentDisplayName(verifier)}`);
+    } catch (err: any) {
+      console.error(err);
+      showToast(err.message ?? 'Failed to assign agent. Please try again.');
+    }
   };
 
   const saveSampleEdit = (formData: FormData) => {
@@ -316,14 +370,14 @@ export default function App() {
               </h1>
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 <span className={`rounded-full border px-3 py-1 text-xs ${statusStyles(status)}`}>{statusLabel(status)}</span>
-                <span className="rounded-full bg-[#f6f2ea] px-3 py-1 text-xs text-[#6a5a44]">Sample ID: {sample.id}</span>
+                <span className="rounded-full bg-[#f6f2ea] px-3 py-1 text-xs text-[#6a5a44]">Sample ID: {sample.id || 'N/A'}</span>
                 <a href="#" className="rounded-full bg-[#f6f2ea] px-3 py-1 text-xs text-[#6a5a44] underline underline-offset-4">
-                  Artisan: {sample.artisan}
+                  Artisan: {sample.artisan || 'Unknown Artisan'}
                 </a>
               </div>
               <div className="mt-3 flex flex-wrap gap-4 text-xs text-[#786e66]">
-                <span>Submitted: {sample.submittedAt}</span>
-                <span>Last updated: {sample.updatedAt}</span>
+                <span>Submitted: {sample.submittedAt || 'N/A'}</span>
+                <span>Last updated: {sample.updatedAt || 'N/A'}</span>
               </div>
             </div>
 
@@ -388,12 +442,20 @@ export default function App() {
 
             <article className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
               <h2 className="text-xl uppercase tracking-[0.04em]" style={{ fontFamily: '"Druk Wide", "Arial Black", sans-serif' }}>Description and Cultural Context</h2>
-              <p className="mt-3 text-sm leading-relaxed text-[#554d47]">{sample.description}</p>
-              <p className="mt-3 text-sm leading-relaxed text-[#554d47]">{expandedDescription ? sample.culturalContext : `${sample.culturalContext.slice(0, 120)}...`}</p>
+              <p className="mt-3 text-sm leading-relaxed text-[#554d47]">{sample.description || 'No description provided for this sample.'}</p>
+              <p className="mt-3 text-sm leading-relaxed text-[#554d47]">
+                {sample.culturalContext 
+                  ? (expandedDescription ? sample.culturalContext : `${sample.culturalContext.slice(0, 120)}${sample.culturalContext.length > 120 ? '...' : ''}`)
+                  : 'No cultural context or historical background provided.'}
+              </p>
               <div className="mt-3 flex flex-wrap items-center gap-2">
-                {sample.culturalTags.map((tag) => (
-                  <span key={tag} className="rounded-full bg-[#f7f1e4] px-3 py-1 text-xs text-[#6a5a44]">{tag}</span>
-                ))}
+                {sample.culturalTags.length > 0 ? (
+                  sample.culturalTags.map((tag) => (
+                    <span key={tag} className="rounded-full bg-[#f7f1e4] px-3 py-1 text-xs text-[#6a5a44]">{tag}</span>
+                  ))
+                ) : (
+                  <span className="text-xs italic text-[#a3978d]">No cultural tags associated</span>
+                )}
               </div>
               <div className="mt-4 flex flex-wrap gap-2 text-xs" style={{ fontFamily: 'Aeonik, Inter, sans-serif' }}>
                 <button className="rounded-lg border border-neutral-200 px-3 py-2" onClick={() => setExpandedDescription((prev) => !prev)}>{expandedDescription ? 'Collapse' : 'Expand'}</button>
@@ -414,12 +476,12 @@ export default function App() {
               {activeTab === 'Details' && (
                 <div className="grid gap-3 md:grid-cols-2 text-sm">
                   {[
-                    ['Materials', sample.materials],
-                    ['Region', sample.region],
-                    ['Technique', sample.technique],
-                    ['Dimensions', sample.dimensions],
-                    ['Suggested Price', `${sample.suggestedPrice} ETB`],
-                    ['Cultural Tags', sample.culturalTags.join(', ')],
+                    ['Materials', sample.materials || 'Not specified'],
+                    ['Region', sample.region || 'Unknown'],
+                    ['Technique', sample.technique || 'Not specified'],
+                    ['Dimensions', sample.dimensions || 'Unknown'],
+                    ['Suggested Price', sample.suggestedPrice > 0 ? `${sample.suggestedPrice} ETB` : 'Price not set'],
+                    ['Cultural Tags', sample.culturalTags.length > 0 ? sample.culturalTags.join(', ') : 'None'],
                   ].map(([label, value]) => (
                     <div key={label} className="rounded-xl border border-neutral-200 p-3 transition hover:-translate-y-1 duration-300">
                       <p className="text-xs uppercase tracking-[0.08em] text-[#7d7268]" style={{ fontFamily: 'Aeonik, Inter, sans-serif' }}>{label}</p>
@@ -459,11 +521,31 @@ export default function App() {
                 <div className="space-y-4">
                   <div className="rounded-xl border border-neutral-200 p-3">
                     <p className="text-xs uppercase tracking-[0.08em] text-[#7d7268]" style={{ fontFamily: 'Aeonik, Inter, sans-serif' }}>Assign Field Agent</p>
-                    <select value={selectedAgentId} onChange={(event) => setSelectedAgentId(event.target.value)} className="mt-3 w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:border-[#C6A75E]">
-                      <option value="">Select an agent</option>
-                      {agents.map((agent) => (
-                        <option key={agent.id} value={agent.id}>{agent.name} - {agent.region} ({agent.availability})</option>
-                      ))}
+                    <input
+                      type="text"
+                      placeholder="Search agent by name or email..."
+                      value={agentSearch}
+                      onChange={(e) => setAgentSearch(e.target.value)}
+                      className="mt-3 w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:border-[#C6A75E]"
+                    />
+                    <select
+                      value={selectedAgentId}
+                      onChange={(event) => setSelectedAgentId(event.target.value)}
+                      className="mt-2 w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:border-[#C6A75E]"
+                    >
+                      <option value="">
+                        {agentsLoading ? 'Loading agents...' : agents.length === 0 ? 'No agents available' : 'Select an agent'}
+                      </option>
+                      {agents
+                        .filter((a) => {
+                          const q = agentSearch.toLowerCase();
+                          return !q || agentDisplayName(a).toLowerCase().includes(q) || a.email.toLowerCase().includes(q);
+                        })
+                        .map((agent) => (
+                          <option key={agent.id} value={agent.id}>
+                            {agentDisplayName(agent)} — {agentLocation(agent)} · {agent.email}
+                          </option>
+                        ))}
                     </select>
                     <div className="mt-3 flex gap-2 text-xs" style={{ fontFamily: 'Aeonik, Inter, sans-serif' }}>
                       <button onClick={assignAgent} disabled={status !== 'APPROVED'} className="rounded-xl border border-neutral-200 px-3 py-2 disabled:opacity-50">{assignedAgent ? 'Reassign Agent' : 'Assign Agent'}</button>
@@ -474,8 +556,9 @@ export default function App() {
 
                   {assignedAgent && (
                     <div className="rounded-xl border border-neutral-200 p-3 text-sm">
-                      <p className="font-medium">Assigned agent: {assignedAgent.name}</p>
-                      <p className="text-[#72675f]">Region: {assignedAgent.region}</p>
+                      <p className="font-medium">Assigned agent: {agentDisplayName(assignedAgent)}</p>
+                      <p className="text-[#72675f]">{agentLocation(assignedAgent)}</p>
+                      <p className="text-[#72675f] text-xs mt-0.5">{assignedAgent.email}</p>
                       <p className="mt-2 rounded-full bg-[#f5efe2] px-2 py-1 text-xs inline-block">Task status: Pending</p>
                     </div>
                   )}
@@ -493,14 +576,16 @@ export default function App() {
             <article className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
               <p className="text-xs uppercase tracking-[0.08em] text-[#85796d]" style={{ fontFamily: 'Aeonik, Inter, sans-serif' }}>Artisan Info</p>
               <div className="mt-3 flex items-center gap-3">
-                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#e9ded0] text-sm font-semibold">MW</div>
+                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#e9ded0] text-sm font-semibold">
+                  {sample.artisan ? sample.artisan.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : '??'}
+                </div>
                 <div>
-                  <p className="font-medium text-[#C6A75E]">{sample.artisan}</p>
-                  <p className="text-xs text-[#6f655d]">Marta Woven Craft</p>
+                  <p className="font-medium text-[#C6A75E]">{sample.artisan || 'Unknown Artisan'}</p>
+                  <p className="text-xs text-[#6f655d]">Verified Ethiocraft Partner</p>
                 </div>
               </div>
-              <p className="mt-3 text-sm text-[#6f655d]">Sidama, Hawassa</p>
-              <span className="mt-2 inline-block rounded-full bg-emerald-50 px-2 py-1 text-xs text-emerald-700">Verified Artisan</span>
+              <p className="mt-3 text-sm text-[#6f655d]">{sample.region || 'Region not specified'}</p>
+              <span className="mt-2 inline-block rounded-full bg-emerald-50 px-2 py-1 text-xs text-emerald-700">Artisan Verified</span>
               <div className="mt-3 flex flex-wrap gap-2 text-xs" style={{ fontFamily: 'Aeonik, Inter, sans-serif' }}>
                 <button className="rounded-lg border border-neutral-200 px-3 py-1.5" onClick={() => showToast('Artisan profile opened')}>View Artisan Profile</button>
                 <button className="rounded-lg border border-neutral-200 px-3 py-1.5" onClick={() => showToast('Message composer opened')}>Message Artisan</button>
@@ -531,16 +616,30 @@ export default function App() {
 
               <article className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
                 <p className="text-xs uppercase tracking-[0.08em] text-[#85796d]" style={{ fontFamily: 'Aeonik, Inter, sans-serif' }}>Agent Assignment</p>
-                <select value={selectedAgentId} onChange={(event) => setSelectedAgentId(event.target.value)} className="mt-3 w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:border-[#C6A75E]">
-                  <option value="">Select agent</option>
+                <select
+                  value={selectedAgentId}
+                  onChange={(event) => setSelectedAgentId(event.target.value)}
+                  className="mt-3 w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:border-[#C6A75E]"
+                >
+                  <option value="">
+                    {agentsLoading ? 'Loading agents...' : agents.length === 0 ? 'No agents available' : 'Select agent'}
+                  </option>
                   {agents.map((agent) => (
-                    <option key={agent.id} value={agent.id}>{agent.name} - {agent.region} ({agent.availability})</option>
+                    <option key={agent.id} value={agent.id}>
+                      {agentDisplayName(agent)} · {agentLocation(agent)}
+                    </option>
                   ))}
                 </select>
                 <button onClick={assignAgent} disabled={status !== 'APPROVED'} className="mt-3 w-full rounded-xl border border-neutral-200 px-3 py-2 text-xs transition duration-300 hover:-translate-y-1 hover:shadow-sm disabled:opacity-50" style={{ fontFamily: 'Aeonik, Inter, sans-serif' }}>
                   Assign Agent
                 </button>
-                {assignedAgent && <div className="mt-3 rounded-xl bg-[#f9f6f1] p-3 text-xs text-[#5f554b]">Assigned: {assignedAgent.name}</div>}
+                {assignedAgent && (
+                  <div className="mt-3 rounded-xl bg-[#f9f6f1] p-3 text-xs text-[#5f554b] space-y-0.5">
+                    <p className="font-medium">{agentDisplayName(assignedAgent)}</p>
+                    <p>{agentLocation(assignedAgent)}</p>
+                    <p className="text-[#9d938a]">{assignedAgent.email}</p>
+                  </div>
+                )}
               </article>
 
               <article className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">

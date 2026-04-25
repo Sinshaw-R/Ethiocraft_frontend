@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Header } from '@/components/shared/header';
 import { Footer } from '@/components/shared/footer';
 import { Button } from '@/components/ui/button';
+import { Slider } from '@/components/ui/slider';
 import Link from 'next/link';
 
 type Product = {
@@ -12,6 +13,9 @@ type Product = {
   price: number;
   image: string;
   badge?: 'Handmade' | 'New';
+  region?: string;
+  material?: string;
+  rating: number; 
 };
 
 const products: Product[] = [
@@ -20,93 +24,131 @@ const products: Product[] = [
     name: 'Habesha Cotton Dress',
     category: 'Textiles',
     price: 168,
-    image:
-      'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=900&q=80',
+    image: 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=900&q=80',
     badge: 'Handmade',
+    region: 'Amhara',
+    material: 'Cotton',
+    rating: 4.8,
   },
   {
     id: 2,
     name: 'Lalibela Filigree Earrings',
     category: 'Jewelry',
     price: 124,
-    image:
-      'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?auto=format&fit=crop&w=900&q=80',
+    image: 'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?auto=format&fit=crop&w=900&q=80',
     badge: 'New',
+    region: 'Amhara',
+    material: 'Silver',
+    rating: 4.5,
   },
   {
     id: 3,
     name: 'Sidama Coffee Ceremony Set',
     category: 'Home',
     price: 210,
-    image:
-      'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=900&q=80',
+    image: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=900&q=80',
     badge: 'Handmade',
+    region: 'SNNPR',
+    material: 'Clay',
+    rating: 5.0,
   },
   {
     id: 4,
     name: 'Woven Mesob Basket',
     category: 'Home',
     price: 96,
-    image:
-      'https://images.unsplash.com/photo-1610701596061-2ecf227e85b2?auto=format&fit=crop&w=900&q=80',
+    image: 'https://images.unsplash.com/photo-1610701596061-2ecf227e85b2?auto=format&fit=crop&w=900&q=80',
+    region: 'Oromia',
+    material: 'Straw',
+    rating: 4.2,
   },
   {
     id: 5,
     name: 'Addis Leather Weekender',
     category: 'Accessories',
     price: 182,
-    image:
-      'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?auto=format&fit=crop&w=900&q=80',
+    image: 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?auto=format&fit=crop&w=900&q=80',
     badge: 'New',
+    region: 'Addis Ababa',
+    material: 'Leather',
+    rating: 4.9,
   },
   {
     id: 6,
     name: 'Hand-Loomed Gabi Shawl',
     category: 'Textiles',
     price: 88,
-    image:
-      'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=900&q=80',
+    image: 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=900&q=80',
     badge: 'Handmade',
+    region: 'Addis Ababa',
+    material: 'Cotton',
+    rating: 4.7,
   },
   {
     id: 7,
     name: 'Axum Cross Pendant',
     category: 'Jewelry',
     price: 116,
-    image:
-      'https://images.unsplash.com/photo-1617038260897-41a1f14a8ca0?auto=format&fit=crop&w=900&q=80',
+    image: 'https://images.unsplash.com/photo-1617038260897-41a1f14a8ca0?auto=format&fit=crop&w=900&q=80',
+    region: 'Tigray',
+    material: 'Silver',
+    rating: 4.6,
   },
   {
     id: 8,
     name: 'Harar Palm Tote',
     category: 'Accessories',
     price: 74,
-    image:
-      'https://images.unsplash.com/photo-1594223274512-ad4803739b7c?auto=format&fit=crop&w=900&q=80',
+    image: 'https://images.unsplash.com/photo-1594223274512-ad4803739b7c?auto=format&fit=crop&w=900&q=80',
     badge: 'Handmade',
+    region: 'Oromia',
+    material: 'Straw',
+    rating: 4.4,
   },
 ];
 
 const categories = ['All', 'Textiles', 'Jewelry', 'Home', 'Accessories'] as const;
+const regionsList = ['Addis Ababa', 'Oromia', 'SNNPR', 'Amhara', 'Tigray'];
+const materialsList = ['Clay', 'Cotton', 'Silver', 'Straw', 'Leather'];
 
 export default function productPage() {
-  const [sortBy, setSortBy] = useState<'curated' | 'price-low' | 'price-high'>('curated');
+  const [sortBy, setSortBy] = useState<'curated' | 'price-low' | 'price-high' | 'newest' | 'rating-high' | 'rating-low'>('curated');
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [visibleIds, setVisibleIds] = useState<number[]>([]);
+
+  // Filter States
   const [activeCategory, setActiveCategory] = useState<(typeof categories)[number]>('All');
   const [showNewOnly, setShowNewOnly] = useState(false);
   const [showHandmadeOnly, setShowHandmadeOnly] = useState(false);
-  const [visibleIds, setVisibleIds] = useState<number[]>([]);
+  const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
+  const [selectedMaterials, setSelectedMaterials] = useState<string[]>([]);
+  const [priceRange, setPriceRange] = useState([0, 500]);
 
   const filteredProducts = useMemo(() => {
-    const base = products
+    // 1. Apply Filters
+    let base = products
       .filter((product) => activeCategory === 'All' || product.category === activeCategory)
       .filter((product) => (showNewOnly ? product.badge === 'New' : true))
-      .filter((product) => (showHandmadeOnly ? product.badge === 'Handmade' : true));
+      .filter((product) => (showHandmadeOnly ? product.badge === 'Handmade' : true))
+      .filter((product) => product.price >= priceRange[0] && product.price <= priceRange[1])
+      .filter((product) => selectedRegions.length === 0 || (product.region && selectedRegions.includes(product.region)))
+      .filter((product) => selectedMaterials.length === 0 || (product.material && selectedMaterials.includes(product.material)));
 
+    // 2. Apply Sorting
     if (sortBy === 'price-low') return [...base].sort((a, b) => a.price - b.price);
     if (sortBy === 'price-high') return [...base].sort((a, b) => b.price - a.price);
-    return base;
-  }, [activeCategory, showHandmadeOnly, showNewOnly, sortBy]);
+    if (sortBy === 'rating-high') return [...base].sort((a, b) => b.rating - a.rating);
+    if (sortBy === 'rating-low') return [...base].sort((a, b) => a.rating - b.rating);
+    if (sortBy === 'newest') {
+      return [...base].sort((a, b) => {
+        if (a.badge === 'New' && b.badge !== 'New') return -1;
+        if (a.badge !== 'New' && b.badge === 'New') return 1;
+        return 0;
+      });
+    }
+    
+    return base; // 'curated' default
+  }, [activeCategory, showHandmadeOnly, showNewOnly, sortBy, priceRange, selectedRegions, selectedMaterials]);
 
   useEffect(() => {
     setVisibleIds([]);
@@ -133,7 +175,16 @@ export default function productPage() {
     setActiveCategory('All');
     setShowNewOnly(false);
     setShowHandmadeOnly(false);
+    setSelectedRegions([]);
+    setSelectedMaterials([]);
+    setPriceRange([0, 500]);
   };
+
+  const toggleArrayFilter = (item: string, state: string[], setState: (val: string[]) => void) => {
+    setState(state.includes(item) ? state.filter((i) => i !== item) : [...state, item]);
+  };
+
+  const hasActiveFilters = activeCategory !== 'All' || showNewOnly || showHandmadeOnly || selectedRegions.length > 0 || selectedMaterials.length > 0 || priceRange[0] > 0 || priceRange[1] < 500;
 
   return (
     <div className="min-h-screen bg-[#FAFAF9] text-[#1C1C1C]">
@@ -155,19 +206,25 @@ export default function productPage() {
           <div className="flex items-center gap-3" style={{ fontFamily: 'Aeonik, Inter, sans-serif' }}>
             <select
               value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as 'curated' | 'price-low' | 'price-high')}
+              onChange={(e) => setSortBy(e.target.value as any)}
               className="h-11 rounded-none border border-[#ddd8cf] bg-transparent px-4 text-sm outline-none transition-colors focus:border-[#C6A75E]"
             >
               <option value="curated">Curated</option>
               <option value="price-low">Price: Low to High</option>
               <option value="price-high">Price: High to Low</option>
+              <option value="rating-high">Rating: High to Low</option>
+              <option value="rating-low">Rating: Low to High</option>
+              <option value="newest">Newest Arrivals</option>
             </select>
 
             <button
               onClick={() => setDrawerOpen(true)}
-              className="h-11 border border-[#ddd8cf] px-5 text-sm transition-colors hover:border-[#C6A75E] hover:text-[#C6A75E]"
+              className="relative h-11 border border-[#ddd8cf] px-5 text-sm transition-colors hover:border-[#C6A75E] hover:text-[#C6A75E]"
             >
               Filters
+              {hasActiveFilters && (
+                <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-[#C6A75E]" />
+              )}
             </button>
           </div>
         </section>
@@ -223,7 +280,15 @@ export default function productPage() {
                   </Link>
 
                   <div className="pt-4">
-                    <p className="text-[11px] uppercase tracking-[0.1em] text-[#7a746d]">{product.category}</p>
+                    {/* ADDED RATING HERE */}
+                    <div className="flex items-center justify-between">
+                      <p className="text-[11px] uppercase tracking-[0.1em] text-[#7a746d]">{product.category}</p>
+                      <div className="flex items-center gap-1 text-[11px] text-[#C6A75E]">
+                        <span>★</span>
+                        <span style={{ fontFamily: 'Inter, sans-serif' }}>{product.rating.toFixed(1)}</span>
+                      </div>
+                    </div>
+                    
                     <Link href={`/products/${product.id}`}>
                       <h3
                         className="mt-2 text-sm uppercase tracking-[0.05em] transition-colors duration-300 hover:text-[#C6A75E] md:text-base"
@@ -262,7 +327,7 @@ export default function productPage() {
       />
 
       <aside
-        className={`fixed right-0 top-0 z-50 h-full w-[320px] border-l border-[#e8e0d1] bg-[#FAFAF9] px-6 py-8 transition-transform duration-[400ms] ${drawerOpen ? 'translate-x-0' : 'translate-x-full'}`}
+        className={`fixed right-0 top-0 z-50 h-full w-[320px] overflow-y-auto border-l border-[#e8e0d1] bg-[#FAFAF9] px-6 py-8 transition-transform duration-[400ms] ${drawerOpen ? 'translate-x-0' : 'translate-x-full'}`}
       >
         <div className="mb-8 flex items-center justify-between">
           <h2 className="text-lg" style={{ fontFamily: '"Druk Wide", "Arial Black", sans-serif' }}>
@@ -289,6 +354,55 @@ export default function productPage() {
                 >
                   {category}
                 </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <p className="mb-4 text-xs uppercase tracking-[0.1em] text-[#7a746d]">Price Range</p>
+            <Slider
+              defaultValue={[0, 500]}
+              min={0}
+              max={500}
+              step={10}
+              value={priceRange}
+              onValueChange={setPriceRange}
+              className="mb-3 w-full"
+            />
+            <div className="flex items-center justify-between text-sm text-[#1c1c1c]">
+              <span>${priceRange[0]}</span>
+              <span>${priceRange[1]}</span>
+            </div>
+          </div>
+
+          <div>
+            <p className="mb-3 text-xs uppercase tracking-[0.1em] text-[#7a746d]">Region of Origin</p>
+            <div className="space-y-2">
+              {regionsList.map((region) => (
+                <label key={region} className="flex cursor-pointer items-center gap-3 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={selectedRegions.includes(region)}
+                    onChange={() => toggleArrayFilter(region, selectedRegions, setSelectedRegions)}
+                  />
+                  {region}
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <p className="mb-3 text-xs uppercase tracking-[0.1em] text-[#7a746d]">Material</p>
+            <div className="space-y-2">
+              {materialsList.map((mat) => (
+                <label key={mat} className="flex cursor-pointer items-center gap-3 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={selectedMaterials.includes(mat)}
+                    onChange={() => toggleArrayFilter(mat, selectedMaterials, setSelectedMaterials)}
+                  />
+                  {mat}
+                </label>
               ))}
             </div>
           </div>

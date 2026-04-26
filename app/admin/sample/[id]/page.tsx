@@ -73,6 +73,21 @@ function agentLocation(agent: Agent) {
   return agent.phone ?? 'No contact info';
 }
 
+function calculateReviewTime(submitted: string, updated: string, status: string) {
+  if (status === 'PENDING_REVIEW' || status === 'SUBMITTED') return 'Pending';
+  if (!submitted || !updated || submitted === 'N/A' || updated === 'N/A') return 'Pending';
+  const start = new Date(submitted).getTime();
+  const end = new Date(updated).getTime();
+  const diff = end - start;
+  if (diff <= 0) return 'Pending';
+
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  if (days > 0) return `${days} day${days > 1 ? 's' : ''}`;
+  const hours = Math.floor(diff / (1000 * 60 * 60));
+  if (hours > 0) return `${hours} hour${hours > 1 ? 's' : ''}`;
+  const minutes = Math.floor(diff / (1000 * 60));
+  return `${minutes} min${minutes !== 1 ? 's' : ''}`;
+}
 
 
 function statusStyles(status: Status) {
@@ -113,6 +128,7 @@ export default function App() {
   const [selectedMediaId, setSelectedMediaId] = useState('');
   const [show3D, setShow3D] = useState(false);
   const [expandedDescription, setExpandedDescription] = useState(false);
+  const [showSamplesDropdown, setShowSamplesDropdown] = useState(false);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [agentsLoading, setAgentsLoading] = useState(false);
   const [agentSearch, setAgentSearch] = useState('');
@@ -126,6 +142,7 @@ export default function App() {
     'Artisan submitted sample - 2026-04-10 09:48',
     'Admin opened review panel - 2026-04-17 10:12',
   ]);
+  const [artisanSamples, setArtisanSamples] = useState<any[]>([]);
 
   // Fetch real verification agents from the backend
   useEffect(() => {
@@ -151,6 +168,26 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (!sample.artisanId) return;
+    const fetchArtisanSamples = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch(`http://localhost:4000/api/v1/admin/products/samples?artisanId=${sample.artisanId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!res.ok) throw new Error('Failed to fetch artisan samples');
+        const json = await res.json();
+        const list = json.data?.items ?? [];
+        setArtisanSamples(list.filter((s: any) => s.id !== sample.id));
+      } catch (err) {
+        console.error('Artisan samples fetch error:', err);
+      }
+    };
+    fetchArtisanSamples();
+  }, [sample.artisanId, sample.id]);
+
+
+  useEffect(() => {
     if (!id) return;
 
     const fetchSample = async () => {
@@ -163,7 +200,7 @@ export default function App() {
         });
         if (!res.ok) throw new Error('Failed to fetch');
         const json = await res.json();
-        
+
         const item = json.data;
         if (item) {
           setSample({
@@ -179,8 +216,8 @@ export default function App() {
             materials: item.materials && item.materials.length > 0 ? item.materials.join(', ') : 'Not specified',
             region: item.culturalMetadata?.origin || 'Unknown Region',
             technique: item.culturalMetadata?.technique || 'Not specified',
-            dimensions: (item.dimensions && (item.dimensions.width || item.dimensions.height)) 
-              ? `${item.dimensions.width || item.dimensions.widthCm || 0}x${item.dimensions.height || item.dimensions.heightCm || 0} cm` 
+            dimensions: (item.dimensions && (item.dimensions.width || item.dimensions.height))
+              ? `${item.dimensions.width || item.dimensions.widthCm || 0}x${item.dimensions.height || item.dimensions.heightCm || 0} cm`
               : 'Dimensions unknown',
             culturalTags: item.tags || [],
           });
@@ -275,7 +312,7 @@ export default function App() {
   const approveSample = async () => {
     if (status === 'NEEDS_MORE_MEDIA') return showToast('Waiting for artisan resubmission');
     if (!hasRequiredMetadata) return showToast('Required metadata is missing');
-    
+
     const res = await updateSampleStatus('APPROVE');
     if (res) {
       setStatus('APPROVED');
@@ -286,7 +323,7 @@ export default function App() {
 
   const rejectSample = async () => {
     if (!rejectReason.trim()) return showToast('Rejection reason is required');
-    
+
     const res = await updateSampleStatus('REJECT', rejectReason);
     if (res) {
       setStatus('REJECTED');
@@ -299,7 +336,7 @@ export default function App() {
 
   const requestMoreMedia = async () => {
     if (!requestMessage.trim()) return showToast('Please include a message for the artisan');
-    
+
     const res = await updateSampleStatus('REQUEST_MORE_INFO', requestMessage);
     if (res) {
       setStatus('NEEDS_MORE_MEDIA');
@@ -444,7 +481,7 @@ export default function App() {
               <h2 className="text-xl uppercase tracking-[0.04em]" style={{ fontFamily: '"Druk Wide", "Arial Black", sans-serif' }}>Description and Cultural Context</h2>
               <p className="mt-3 text-sm leading-relaxed text-[#554d47]">{sample.description || 'No description provided for this sample.'}</p>
               <p className="mt-3 text-sm leading-relaxed text-[#554d47]">
-                {sample.culturalContext 
+                {sample.culturalContext
                   ? (expandedDescription ? sample.culturalContext : `${sample.culturalContext.slice(0, 120)}${sample.culturalContext.length > 120 ? '...' : ''}`)
                   : 'No cultural context or historical background provided.'}
               </p>
@@ -497,10 +534,10 @@ export default function App() {
                     <p className="text-xs uppercase tracking-[0.08em] text-[#7d7268]" style={{ fontFamily: 'Aeonik, Inter, sans-serif' }}>Review Checklist</p>
                     <div className="mt-3 space-y-2 text-sm">
                       {[
-                        ['Media quality', true],
-                        ['Description completeness', true],
-                        ['Cultural accuracy', true],
-                        ['Pricing reasonable', true],
+                        ['Media quality', mediaList.length > 0],
+                        ['Description completeness', (sample.description?.length ?? 0) > 10],
+                        ['Cultural accuracy', (sample.culturalContext?.length ?? 0) > 10],
+                        ['Pricing reasonable', sample.suggestedPrice >= 500 && sample.suggestedPrice <= 1000],
                       ].map(([label, pass]) => (
                         <div key={String(label)} className="flex items-center justify-between rounded-lg bg-[#f9f6f1] px-3 py-2">
                           <span>{label}</span>
@@ -587,9 +624,38 @@ export default function App() {
               <p className="mt-3 text-sm text-[#6f655d]">{sample.region || 'Region not specified'}</p>
               <span className="mt-2 inline-block rounded-full bg-emerald-50 px-2 py-1 text-xs text-emerald-700">Artisan Verified</span>
               <div className="mt-3 flex flex-wrap gap-2 text-xs" style={{ fontFamily: 'Aeonik, Inter, sans-serif' }}>
-                <button className="rounded-lg border border-neutral-200 px-3 py-1.5" onClick={() => showToast('Artisan profile opened')}>View Artisan Profile</button>
-                <button className="rounded-lg border border-neutral-200 px-3 py-1.5" onClick={() => showToast('Message composer opened')}>Message Artisan</button>
-                <button className="rounded-lg border border-neutral-200 px-3 py-1.5" onClick={() => showToast('Showing all artisan samples')}>View All Samples</button>
+                <button className="rounded-lg border border-neutral-200 px-3 py-1.5 transition hover:bg-neutral-50" onClick={() => navigate(`/admin/users/${sample.artisanId}`)}>View Artisan Profile</button>
+                <button className="rounded-lg border border-neutral-200 px-3 py-1.5 transition hover:bg-neutral-50" onClick={() => showToast('Message composer opened')}>Message Artisan</button>
+                <div className="relative">
+                  <button 
+                    className="rounded-lg border border-neutral-200 px-3 py-1.5 transition hover:bg-neutral-50" 
+                    onClick={() => {
+                      if (artisanSamples.length === 0) showToast('No other samples found');
+                      else setShowSamplesDropdown(!showSamplesDropdown);
+                    }}
+                  >
+                    View All Samples
+                  </button>
+                  {showSamplesDropdown && artisanSamples.length > 0 && (
+                    <div className="absolute top-full left-0 mt-2 w-56 z-50 rounded-xl border border-neutral-200 bg-white shadow-xl overflow-hidden">
+                      <div className="max-h-48 overflow-y-auto">
+                        {artisanSamples.map(s => (
+                          <button 
+                            key={s.id} 
+                            onClick={(e) => { 
+                              e.stopPropagation(); 
+                              setShowSamplesDropdown(false);
+                              navigate(`/admin/sample/${s.id}`); 
+                            }} 
+                            className="block w-full text-left px-3 py-2 text-xs hover:bg-neutral-50 truncate border-b border-neutral-100 last:border-0 text-[#3E2723]"
+                          >
+                            {s.title || 'Untitled Sample'}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </article>
           </section>
@@ -646,7 +712,7 @@ export default function App() {
                 <p className="text-xs uppercase tracking-[0.08em] text-[#85796d]" style={{ fontFamily: 'Aeonik, Inter, sans-serif' }}>Sample Insights</p>
                 <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
                   <div className="rounded-xl border border-neutral-200 p-2"><p className="text-xs text-[#7b7067]">Views</p><p className="font-semibold">126</p></div>
-                  <div className="rounded-xl border border-neutral-200 p-2"><p className="text-xs text-[#7b7067]">Review time</p><p className="font-semibold">3 days</p></div>
+                  <div className="rounded-xl border border-neutral-200 p-2"><p className="text-xs text-[#7b7067]">Review time</p><p className="font-semibold">{calculateReviewTime(sample.submittedAt, sample.updatedAt, status)}</p></div>
                 </div>
               </article>
             </div>

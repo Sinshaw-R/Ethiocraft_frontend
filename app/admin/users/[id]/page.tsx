@@ -168,7 +168,7 @@ export default function UserDetailPage() {
                 let r = (data.role?.toLowerCase() || "customer") as Role;
                 if (data.role === 'VERIFICATION_AGENT') r = 'agent';
                 if (data.role === 'USER') r = 'customer';
-                
+
                 setRole(r);
                 setDraftRole(r);
                 setStatus((data.status?.toLowerCase() || "active") as Status);

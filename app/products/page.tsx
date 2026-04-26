@@ -138,6 +138,7 @@ export default function productPage() {
   const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
   const [selectedMaterials, setSelectedMaterials] = useState<string[]>([]);
   const [priceRange, setPriceRange] = useState([0, 500]);
+  const keyword = searchParams.get('q')?.trim().toLowerCase() ?? '';
 
   // Initialize filters from URL params
   useEffect(() => {
@@ -171,7 +172,12 @@ export default function productPage() {
       .filter((product) => (showHandmadeOnly ? product.badge === 'Handmade' : true))
       .filter((product) => product.price >= priceRange[0] && product.price <= priceRange[1])
       .filter((product) => selectedRegions.length === 0 || (product.region && selectedRegions.includes(product.region)))
-      .filter((product) => selectedMaterials.length === 0 || (product.material && selectedMaterials.includes(product.material)));
+      .filter((product) => selectedMaterials.length === 0 || (product.material && selectedMaterials.includes(product.material)))
+      .filter((product) => {
+        if (!keyword) return true;
+        const searchable = `${product.name} ${product.category} ${product.region ?? ''} ${product.material ?? ''}`.toLowerCase();
+        return searchable.includes(keyword);
+      });
 
     // 2. Apply Sorting
     if (sortBy === 'price-low') return [...base].sort((a, b) => a.price - b.price);
@@ -187,7 +193,7 @@ export default function productPage() {
     }
 
     return base; // 'curated' default
-  }, [activeCategory, showHandmadeOnly, showNewOnly, sortBy, priceRange, selectedRegions, selectedMaterials]);
+  }, [activeCategory, showHandmadeOnly, showNewOnly, sortBy, priceRange, selectedRegions, selectedMaterials, keyword]);
 
   useEffect(() => {
     setVisibleIds([]);
@@ -273,6 +279,11 @@ export default function productPage() {
             <p className="mt-2 text-sm text-[#5f5b55]" style={{ fontFamily: 'Inter, sans-serif' }}>
               Authentic handcrafted pieces from Ethiopia
             </p>
+            {keyword && (
+              <p className="mt-2 text-xs uppercase tracking-[0.08em] text-[#7a746d]" style={{ fontFamily: 'Aeonik, Inter, sans-serif' }}>
+                Search: "{searchParams.get('q')}"
+              </p>
+            )}
           </div>
 
           <div className="flex items-center gap-3" style={{ fontFamily: 'Aeonik, Inter, sans-serif' }}>

@@ -4,7 +4,10 @@ import { Footer } from "@/components/shared/footer";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
+<<<<<<< HEAD
+=======
 import { useCart } from "@/lib/cart-context";
+>>>>>>> 8c3985f42246b5b83eab36049412039f6e100bf4
 import { getWishlistProductIds, toggleWishlistProduct } from "@/lib/wishlist";
 import { Heart } from "lucide-react";
 import React from "react";
@@ -137,7 +140,10 @@ const initialReviews: Review[] = [
 
 export default function App() {
   const { token } = useAuth();
+<<<<<<< HEAD
+=======
   const { addItem } = useCart();
+>>>>>>> 8c3985f42246b5b83eab36049412039f6e100bf4
   const wishlistUserKey = token ?? "guest";
   // UI States
   const [quantity, setQuantity] = useState(1);
@@ -254,6 +260,8 @@ export default function App() {
     toast.info(added ? "Added to wishlist" : "Removed from wishlist");
   };
 
+<<<<<<< HEAD
+=======
   const handleAddToCart = () => {
     addItem({
       id: product.id,
@@ -266,6 +274,7 @@ export default function App() {
     toast.success(`${product.name} added to cart`);
   };
 
+>>>>>>> 8c3985f42246b5b83eab36049412039f6e100bf4
   const showImageMode = () => setMediaMode("image");
   const show3DMode = () => {
     setMediaMode("3d");
@@ -419,67 +428,72 @@ export default function App() {
                   +
                 </button>
               </div>
+<<<<<<< HEAD
+              <button className="h-12 border border-[#C6A75E] bg-[#C6A75E] px-8 text-[10px] uppercase tracking-widest text-white transition-colors hover:bg-transparent hover:text-[#C6A75E]">
+=======
               <button
-                onClick={handleAddToCart}
-                className="h-12 border border-[#C6A75E] bg-[#C6A75E] px-8 text-[10px] uppercase tracking-widest text-white transition-colors hover:bg-transparent hover:text-[#C6A75E]"
-              >
-                Add to Cart
-              </button>
+      onClick={handleAddToCart}
+      className="h-12 border border-[#C6A75E] bg-[#C6A75E] px-8 text-[10px] uppercase tracking-widest text-white transition-colors hover:bg-transparent hover:text-[#C6A75E]"
+    >
+>>>>>>> 8c3985f42246b5b83eab36049412039f6e100bf4
+      Add to Cart
+    </button>
 
-              {/* WISHLIST BUTTON */}
-              <button
-                className="transition-colors"
-                onClick={handleWishlistToggle}
-                aria-label={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
-              >
-                <Heart
-                  className={`h-6 w-6 ${isWishlisted ? "fill-[#C6A75E] text-[#C6A75E]" : "text-[#4f4b45] hover:text-[#C6A75E]"}`}
-                />
-              </button>
+    {/* WISHLIST BUTTON */}
+    <button
+      className="transition-colors"
+      onClick={handleWishlistToggle}
+      aria-label={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
+    >
+      <Heart
+        className={`h-6 w-6 ${isWishlisted ? "fill-[#C6A75E] text-[#C6A75E]" : "text-[#4f4b45] hover:text-[#C6A75E]"}`}
+      />
+    </button>
 
-              {/* SHARE BUTTON (ADDED AS REQUESTED) */}
-              <button
-                className="text-[#4f4b45] hover:text-[#C6A75E] transition-colors"
-                onClick={handleShare}
-                aria-label="Share product"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
-                  <polyline points="16 6 12 2 8 6" />
-                  <line x1="12" y1="2" x2="12" y2="15" />
-                </svg>
-              </button>
+    {/* SHARE BUTTON (ADDED AS REQUESTED) */}
+    <button
+      className="text-[#4f4b45] hover:text-[#C6A75E] transition-colors"
+      onClick={handleShare}
+      aria-label="Share product"
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="20"
+        height="20"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+        <polyline points="16 6 12 2 8 6" />
+        <line x1="12" y1="2" x2="12" y2="15" />
+      </svg>
+    </button>
 
-            </div>
-            <div className="font-aeonik mt-10 flex flex-wrap gap-x-7 gap-y-3 text-[10px] uppercase tracking-widest text-[#4f4b45]">
-              <p>Free Shipping</p>
-              <p>Handmade</p>
-              <p>Easy Returns</p>
-            </div>
-          </div>
-        </section>
+  </div>
+    <div className="font-aeonik mt-10 flex flex-wrap gap-x-7 gap-y-3 text-[10px] uppercase tracking-widest text-[#4f4b45]">
+      <p>Free Shipping</p>
+      <p>Handmade</p>
+      <p>Easy Returns</p>
+    </div>
+          </div >
+        </section >
 
-        {/* --- STORY & ARTISAN --- */}
-        <section
-          className="mt-24"
-          data-reveal-id="story"
-          style={{
-            opacity: isSectionVisible("story") ? 1 : 0,
-            transform: isSectionVisible("story")
-              ? "translateY(0)"
-              : "translateY(22px)",
-            transition: "opacity 600ms ease, transform 600ms ease",
-          }}
+    {/* --- STORY & ARTISAN --- */ }
+    < section
+  className = "mt-24"
+  data - reveal - id="story"
+  style = {{
+    opacity: isSectionVisible("story") ? 1 : 0,
+      transform: isSectionVisible("story")
+        ? "translateY(0)"
+        : "translateY(22px)",
+        transition: "opacity 600ms ease, transform 600ms ease",
+          }
+}
         >
           <h2 className="font-druk-medium text-2xl uppercase tracking-[0.06em]">
             Product Story
@@ -487,18 +501,18 @@ export default function App() {
           <p className="mt-6 max-w-[72ch] text-lg leading-relaxed text-[#45413b]">
             {product.story}
           </p>
-        </section>
+        </section >
 
-        {/* --- DETAILS --- */}
-        <section
-          className="mt-24"
-          data-reveal-id="details"
-          style={{
-            opacity: isSectionVisible("details") ? 1 : 0,
-            transform: isSectionVisible("details")
-              ? "translateY(0)"
-              : "translateY(22px)",
-            transition: "opacity 600ms ease, transform 600ms ease",
+  {/* --- DETAILS --- */ }
+  < section
+className = "mt-24"
+data - reveal - id="details"
+style = {{
+  opacity: isSectionVisible("details") ? 1 : 0,
+    transform: isSectionVisible("details")
+      ? "translateY(0)"
+      : "translateY(22px)",
+      transition: "opacity 600ms ease, transform 600ms ease",
           }}
         >
           <h2 className="font-druk-medium text-2xl uppercase tracking-[0.06em]">
@@ -524,18 +538,18 @@ export default function App() {
               <p>{product.care}</p>
             </div>
           </div>
-        </section>
+        </section >
 
-        {/* --- RELATED PIECES --- */}
-        <section
-          className="mt-24"
-          data-reveal-id="related"
-          style={{
-            opacity: isSectionVisible("related") ? 1 : 0,
-            transform: isSectionVisible("related")
-              ? "translateY(0)"
-              : "translateY(22px)",
-            transition: "opacity 600ms ease, transform 600ms ease",
+  {/* --- RELATED PIECES --- */ }
+  < section
+className = "mt-24"
+data - reveal - id="related"
+style = {{
+  opacity: isSectionVisible("related") ? 1 : 0,
+    transform: isSectionVisible("related")
+      ? "translateY(0)"
+      : "translateY(22px)",
+      transition: "opacity 600ms ease, transform 600ms ease",
           }}
         >
           <h2 className="font-druk-medium text-2xl uppercase tracking-[0.06em]">
@@ -578,148 +592,148 @@ export default function App() {
               </article>
             ))}
           </div>
-        </section>
+        </section >
 
-        {/* --- UC17: PRODUCT REVIEW SECTION --- */}
-        <section
-          className="mt-32 border-t border-[#e4dfd5] pt-24"
-          data-reveal-id="reviews"
-          style={{
-            opacity: isSectionVisible("reviews") ? 1 : 0,
-            transform: isSectionVisible("reviews")
-              ? "translateY(0)"
-              : "translateY(22px)",
-            transition: "opacity 600ms ease, transform 600ms ease",
+  {/* --- UC17: PRODUCT REVIEW SECTION --- */ }
+  < section
+className = "mt-32 border-t border-[#e4dfd5] pt-24"
+data - reveal - id="reviews"
+style = {{
+  opacity: isSectionVisible("reviews") ? 1 : 0,
+    transform: isSectionVisible("reviews")
+      ? "translateY(0)"
+      : "translateY(22px)",
+      transition: "opacity 600ms ease, transform 600ms ease",
           }}
         >
-          <div className="grid grid-cols-1 gap-16 lg:grid-cols-12">
-            {/* Summary & Form Column */}
-            <div className="lg:col-span-5">
-              <h2 className="font-druk-medium text-2xl uppercase tracking-[0.06em]">
-                Reviews
-              </h2>
+  <div className="grid grid-cols-1 gap-16 lg:grid-cols-12">
+    {/* Summary & Form Column */}
+    <div className="lg:col-span-5">
+      <h2 className="font-druk-medium text-2xl uppercase tracking-[0.06em]">
+        Reviews
+      </h2>
 
-              <div className="mt-6 flex items-center gap-4">
-                <div className="text-5xl font-semibold">4.8</div>
-                <div>
-                  <div className="flex text-[#C6A75E]">{"★".repeat(5)}</div>
-                  <p className="font-aeonik text-[10px] uppercase tracking-widest text-[#767068]">
-                    Based on {initialReviews.length} verified reviews
-                  </p>
-                </div>
-              </div>
+      <div className="mt-6 flex items-center gap-4">
+        <div className="text-5xl font-semibold">4.8</div>
+        <div>
+          <div className="flex text-[#C6A75E]">{"★".repeat(5)}</div>
+          <p className="font-aeonik text-[10px] uppercase tracking-widest text-[#767068]">
+            Based on {initialReviews.length} verified reviews
+          </p>
+        </div>
+      </div>
 
-              {/* Form implementation based on UC17 logic */}
-              <div className="mt-12 bg-[#f4f1ec] p-8">
-                {!isUserAuthenticated ? (
-                  <p className="text-sm">
-                    Please{" "}
-                    <Link href="/login" className="underline">
-                      sign in
-                    </Link>{" "}
-                    to leave feedback.
-                  </p>
-                ) : !hasPurchasedAndReceived ? (
-                  <p className="text-sm italic text-[#767068]">
-                    Reviews are only available for customers who have received
-                    this product.
-                  </p>
-                ) : hasAlreadyReviewed ? (
-                  <p className="text-sm">
-                    You have already submitted a review for this piece.
-                  </p>
-                ) : reviewStatus === "success" ? (
-                  <div className="py-4">
-                    <p className="font-aeonik text-sm uppercase tracking-widest text-[#C6A75E]">
-                      Submission Successful
-                    </p>
-                    <p className="mt-2 text-xs text-[#4f4b45]">
-                      Your review is currently pending moderation and will be
-                      visible shortly. Thank you for your feedback.
-                    </p>
-                  </div>
-                ) : (
-                  <form onSubmit={handleSubmitReview} className="space-y-6">
-                    <div>
-                      <p className="font-aeonik text-[10px] uppercase tracking-widest text-[#1C1C1C] mb-3">
-                        Your Rating
-                      </p>
-                      <div className="flex gap-2">
-                        {[1, 2, 3, 4, 5].map((star) => (
-                          <button
-                            key={star}
-                            type="button"
-                            onClick={() => setUserRating(star)}
-                            className={`text-2xl transition-colors ${userRating >= star ? "text-[#C6A75E]" : "text-[#d8d2c8]"}`}
-                          >
-                            ★
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div>
-                      <p className="font-aeonik text-[10px] uppercase tracking-widest text-[#1C1C1C] mb-3">
-                        Review Details
-                      </p>
-                      <textarea
-                        className="w-full border border-[#d8d2c8] bg-transparent p-4 text-sm outline-none focus:border-[#C6A75E] transition-colors"
-                        placeholder="Share your experience with the craftsmanship and fit..."
-                        rows={4}
-                        value={userComment}
-                        onChange={(e) => setUserComment(e.target.value)}
-                      />
-                    </div>
-
-                    <button
-                      type="submit"
-                      disabled={reviewStatus === "submitting"}
-                      className="w-full bg-[#1C1C1C] py-4 text-[10px] uppercase tracking-[0.2em] text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-                    >
-                      {reviewStatus === "submitting"
-                        ? "Saving..."
-                        : "Submit Review"}
-                    </button>
-                  </form>
-                )}
-              </div>
-            </div>
-
-            {/* Existing Reviews List */}
-            <div className="lg:col-span-7 space-y-12">
-              {initialReviews.map((review) => (
-                <div
-                  key={review.id}
-                  className="border-b border-[#e4dfd5] pb-10"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <p className="font-aeonik text-sm font-medium">
-                        {review.author}
-                      </p>
-                      {review.isVerified && (
-                        <span className="bg-[#e8f0e8] text-[#2d5a27] text-[9px] uppercase tracking-widest px-2 py-0.5 rounded-full">
-                          Verified Buyer
-                        </span>
-                      )}
-                    </div>
-                    <span className="font-aeonik text-[10px] text-[#767068]">
-                      {review.date}
-                    </span>
-                  </div>
-                  <div className="mt-2 flex text-[#C6A75E] text-xs">
-                    {"★".repeat(review.rating)}
-                    {"☆".repeat(5 - review.rating)}
-                  </div>
-                  <p className="mt-5 text-[15px] leading-relaxed text-[#4f4b45]">
-                    {review.comment}
-                  </p>
-                </div>
-              ))}
-            </div>
+      {/* Form implementation based on UC17 logic */}
+      <div className="mt-12 bg-[#f4f1ec] p-8">
+        {!isUserAuthenticated ? (
+          <p className="text-sm">
+            Please{" "}
+            <Link href="/login" className="underline">
+              sign in
+            </Link>{" "}
+            to leave feedback.
+          </p>
+        ) : !hasPurchasedAndReceived ? (
+          <p className="text-sm italic text-[#767068]">
+            Reviews are only available for customers who have received
+            this product.
+          </p>
+        ) : hasAlreadyReviewed ? (
+          <p className="text-sm">
+            You have already submitted a review for this piece.
+          </p>
+        ) : reviewStatus === "success" ? (
+          <div className="py-4">
+            <p className="font-aeonik text-sm uppercase tracking-widest text-[#C6A75E]">
+              Submission Successful
+            </p>
+            <p className="mt-2 text-xs text-[#4f4b45]">
+              Your review is currently pending moderation and will be
+              visible shortly. Thank you for your feedback.
+            </p>
           </div>
-        </section>
-      </main>
+        ) : (
+          <form onSubmit={handleSubmitReview} className="space-y-6">
+            <div>
+              <p className="font-aeonik text-[10px] uppercase tracking-widest text-[#1C1C1C] mb-3">
+                Your Rating
+              </p>
+              <div className="flex gap-2">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    type="button"
+                    onClick={() => setUserRating(star)}
+                    className={`text-2xl transition-colors ${userRating >= star ? "text-[#C6A75E]" : "text-[#d8d2c8]"}`}
+                  >
+                    ★
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <p className="font-aeonik text-[10px] uppercase tracking-widest text-[#1C1C1C] mb-3">
+                Review Details
+              </p>
+              <textarea
+                className="w-full border border-[#d8d2c8] bg-transparent p-4 text-sm outline-none focus:border-[#C6A75E] transition-colors"
+                placeholder="Share your experience with the craftsmanship and fit..."
+                rows={4}
+                value={userComment}
+                onChange={(e) => setUserComment(e.target.value)}
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={reviewStatus === "submitting"}
+              className="w-full bg-[#1C1C1C] py-4 text-[10px] uppercase tracking-[0.2em] text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+            >
+              {reviewStatus === "submitting"
+                ? "Saving..."
+                : "Submit Review"}
+            </button>
+          </form>
+        )}
+      </div>
+    </div>
+
+    {/* Existing Reviews List */}
+    <div className="lg:col-span-7 space-y-12">
+      {initialReviews.map((review) => (
+        <div
+          key={review.id}
+          className="border-b border-[#e4dfd5] pb-10"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <p className="font-aeonik text-sm font-medium">
+                {review.author}
+              </p>
+              {review.isVerified && (
+                <span className="bg-[#e8f0e8] text-[#2d5a27] text-[9px] uppercase tracking-widest px-2 py-0.5 rounded-full">
+                  Verified Buyer
+                </span>
+              )}
+            </div>
+            <span className="font-aeonik text-[10px] text-[#767068]">
+              {review.date}
+            </span>
+          </div>
+          <div className="mt-2 flex text-[#C6A75E] text-xs">
+            {"★".repeat(review.rating)}
+            {"☆".repeat(5 - review.rating)}
+          </div>
+          <p className="mt-5 text-[15px] leading-relaxed text-[#4f4b45]">
+            {review.comment}
+          </p>
+        </div>
+      ))}
+    </div>
+  </div>
+        </section >
+      </main >
 
       <ChatSupport />
       <Footer />
@@ -743,6 +757,6 @@ export default function App() {
           font-family: var(--font-inter), sans-serif;
         }
       `}</style>
-    </div>
+    </div >
   );
 }

@@ -10,6 +10,12 @@ import { ShoppingBag, Package, Heart, Settings } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/lib/auth-context'
+<<<<<<< HEAD
+import { getWishlistProductIds, toggleWishlistProduct } from '@/lib/wishlist'
+
+export default function CustomerDashboard() {
+  const { token } = useAuth()
+=======
 import { useCart } from '@/lib/cart-context'
 import { getWishlistProductIds, toggleWishlistProduct } from '@/lib/wishlist'
 import { toast } from 'react-toastify'
@@ -17,6 +23,7 @@ import { toast } from 'react-toastify'
 export default function CustomerDashboard() {
   const { token } = useAuth()
   const { addItem } = useCart()
+>>>>>>> 8c3985f42246b5b83eab36049412039f6e100bf4
   const wishlistUserKey = token ?? 'guest'
   const recentOrders = [
     {
@@ -116,6 +123,8 @@ export default function CustomerDashboard() {
     setWishlistIds(ids)
     toast.info(`${productName} removed from wishlist`)
   }
+<<<<<<< HEAD
+=======
 
   const handleAddWishlistItemToCart = (item: (typeof catalogProducts)[number]) => {
     addItem({
@@ -128,6 +137,7 @@ export default function CustomerDashboard() {
     })
     toast.success(`${item.name} added to cart`)
   }
+>>>>>>> 8c3985f42246b5b83eab36049412039f6e100bf4
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -274,27 +284,32 @@ export default function CustomerDashboard() {
                           <p className="text-sm text-muted-foreground">{item.artisan}</p>
                           <p className="text-lg font-bold text-secondary mt-2">${item.price}</p>
                           <div className="flex gap-2 mt-3">
+<<<<<<< HEAD
+  <Button size="sm" className="flex-1 bg-primary">
+=======
                             <Button
-                              size="sm"
-                              className="flex-1 bg-primary"
-                              onClick={() => handleAddWishlistItemToCart(item)}
-                            >
-                              Add to Cart
-                            </Button>
-                            <Button size="sm" variant="outline" onClick={() => handleRemoveWishlistItem(item.id, item.name)}>
-                              Remove
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    </Card>
-                  ))}
-                </div>
+      size="sm"
+      className="flex-1 bg-primary"
+      onClick={() => handleAddWishlistItemToCart(item)}
+    >
+>>>>>>> 8c3985f42246b5b83eab36049412039f6e100bf4
+      Add to Cart
+    </Button>
+    <Button size="sm" variant="outline" onClick={() => handleRemoveWishlistItem(item.id, item.name)}>
+      Remove
+    </Button>
+  </div>
+                        </div >
+                      </div >
+                    </Card >
+                  ))
+}
+                </div >
               )}
-            </TabsContent>
+            </TabsContent >
 
-            {/* Account Tab */}
-            <TabsContent value="account" className="space-y-4">
+  {/* Account Tab */ }
+  < TabsContent value = "account" className = "space-y-4" >
               <h2 className="text-xl font-semibold mb-4">Account Settings</h2>
 
               <Card className="p-6 space-y-4">
@@ -330,10 +345,10 @@ export default function CustomerDashboard() {
                 </div>
                 <Button variant="outline">Manage Addresses</Button>
               </Card>
-            </TabsContent>
-          </Tabs>
-        </div>
-      </main>
+            </TabsContent >
+          </Tabs >
+        </div >
+      </main >
 
       <Footer />
       <style jsx>{`
@@ -341,6 +356,6 @@ export default function CustomerDashboard() {
         .font-aeonik { font-family: var(--font-aeonik), sans-serif; }
         .font-inter { font-family: var(--font-inter), sans-serif; }
       `}</style>
-    </div>
+    </div >
   )
 }

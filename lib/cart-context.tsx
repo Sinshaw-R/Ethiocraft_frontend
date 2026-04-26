@@ -75,7 +75,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setItems([])
   }
 
-  const cartCount = items.reduce((sum, item) => sum + item.quantity, 0)
+  // Count distinct products added to cart, not summed quantities.
+  const cartCount = items.length
   const cartTotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0)
 
   return (

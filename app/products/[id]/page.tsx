@@ -240,6 +240,7 @@ export default function App() {
     const { added } = toggleWishlistProduct(wishlistUserKey, product.id);
     setIsWishlisted(added);
     setWishlistMessage(added ? "Added to wishlist" : "Removed from wishlist");
+    toast.info(added ? "Added to wishlist" : "Removed from wishlist");
   };
 
   const handleAddToCart = () => {

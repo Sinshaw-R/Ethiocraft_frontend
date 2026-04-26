@@ -9,6 +9,7 @@ import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import ChatSupport from '@/components/ChatSupport';
 import { useCart } from '@/lib/cart-context';
+import { toast } from 'react-toastify';
 
 export default function App() {
   const { items, updateQuantity: updateCartQuantity, removeItem: removeCartItem } = useCart();
@@ -33,11 +34,12 @@ export default function App() {
     window.setTimeout(() => setQuantityPulseId((active) => (active === id ? null : active)), 220);
   };
 
-  const removeItem = (id: number) => {
+  const removeItem = (id: number, name: string) => {
     setLeavingIds((current) => (current.includes(id) ? current : [...current, id]));
     window.setTimeout(() => {
       removeCartItem(id);
       setLeavingIds((current) => current.filter((itemId) => itemId !== id));
+      toast.info(`${name} removed from cart`);
     }, 360);
   };
 
@@ -150,7 +152,7 @@ export default function App() {
                         <div className="flex flex-col items-end justify-between">
                           <p className="text-lg font-semibold md:text-xl">${(item.price * item.quantity).toFixed(2)}</p>
                           <button
-                            onClick={() => removeItem(item.id)}
+                            onClick={() => removeItem(item.id, item.name)}
                             className="font-aeonik text-xs uppercase tracking-[0.08em] text-[#9f3b3b] opacity-0 transition-opacity duration-300 hover:text-[#7f2e2e] group-hover:opacity-100"
                           >
                             Remove

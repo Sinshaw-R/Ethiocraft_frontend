@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { ShoppingCart, Search, Menu, X, UserCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -27,10 +28,12 @@ export function Header() {
   const [isOverHero, setIsOverHero] = useState(true)
   const [isHovered, setIsHovered] = useState(false)
   const [isSearchOpen, setIsSearchOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
   const headerRef = useRef<HTMLElement>(null)
   const searchBarRef = useRef<HTMLDivElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const { setIsHovered: setGlobalIsHovered } = useHeader()
+  const router = useRouter()
   const { token, role } = useAuth()
   const { cartCount } = useCart()
   const isLoggedIn = Boolean(token)
@@ -110,6 +113,16 @@ export function Header() {
         onComplete: () => setIsSearchOpen(false)
       })
     }
+  }
+
+  const handleSearchSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    const query = searchQuery.trim()
+    if (!query) return
+
+    router.push(`/products?q=${encodeURIComponent(query)}`)
+    handleCloseSearch()
+    setSearchQuery('')
   }
 
   useEffect(() => {
@@ -298,11 +311,13 @@ export function Header() {
               onClick={(e) => e.stopPropagation()}
             >
               <div className="container mx-auto px-4 py-4">
-                <div className="relative w-full max-w-2xl mx-auto">
+                <form className="relative w-full max-w-2xl mx-auto" onSubmit={handleSearchSubmit}>
                   <Input
                     ref={searchInputRef}
                     type="search"
                     placeholder="Search products..."
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)}
                     className="pl-10 pr-10 text-[#1C1C1C] placeholder:text-muted-foreground bg-white border border-gray-300"
                   />
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -314,7 +329,7 @@ export function Header() {
                   >
                     <X className="w-4 h-4" />
                   </Button>
-                </div>
+                </form>
               </div>
             </div>
           </div>

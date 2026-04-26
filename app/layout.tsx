@@ -5,6 +5,7 @@ import localFont from 'next/font/local'
 import './globals.css'
 import { HeaderProvider } from '@/lib/header-context'
 import { AuthProvider } from '@/lib/auth-context'
+import { CartProvider } from '@/lib/cart-context'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -57,9 +58,11 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${inter.variable} ${aeonik.variable} ${drukMedium.variable} ${logo.variable} font-inter antialiased bg-background text-foreground`}>
         <AuthProvider>
-          <HeaderProvider>
-            {children}
-          </HeaderProvider>
+          <CartProvider>
+            <HeaderProvider>
+              {children}
+            </HeaderProvider>
+          </CartProvider>
         </AuthProvider>
       </body>
     </html>

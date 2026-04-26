@@ -9,10 +9,12 @@ import { Footer } from '@/components/shared/footer'
 import { Badge } from '@/components/ui/badge'
 import { StorySection } from '@/components/shared/story-section'
 import { useHeader } from '@/lib/header-context'
+import { useCart } from '@/lib/cart-context'
 import ChatSupport from '@/components/ChatSupport'
 
 export default function Home() {
   const { isHovered } = useHeader()
+  const { addItem } = useCart()
   const featuredProducts = [
     {
       id: 1,
@@ -79,6 +81,19 @@ export default function Home() {
       amount: '24 Items'
     },
   ]
+
+  const handleAddToCart = (event: React.MouseEvent<HTMLButtonElement>, product: typeof featuredProducts[number]) => {
+    event.preventDefault()
+    event.stopPropagation()
+    addItem({
+      id: product.id,
+      name: product.name,
+      price: Number.parseFloat(product.price.replace('$', '')),
+      image: product.image,
+      quantity: 1,
+      category: product.category,
+    })
+  }
 
   return (
 
@@ -213,7 +228,11 @@ export default function Home() {
                     {/* Price and Button */}
                     <div className="flex items-center justify-between">
                       <span className="text-lg font-bold text-secondary">{product.price}</span>
-                      <Button size="sm" className="bg-primary hover:bg-primary/90">
+                      <Button
+                        size="sm"
+                        className="bg-primary hover:bg-primary/90"
+                        onClick={(event) => handleAddToCart(event, product)}
+                      >
                         Add to Cart
                       </Button>
                     </div>

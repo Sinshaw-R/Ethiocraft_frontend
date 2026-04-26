@@ -8,56 +8,18 @@ import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import ChatSupport from '@/components/ChatSupport';
-
-type CartItem = {
-  id: number;
-  name: string;
-  category: string;
-  price: number;
-  image: string;
-  quantity: number;
-};
-
-const initialItems: CartItem[] = [
-  {
-    id: 1,
-    name: 'Habesha Loomed Cotton Dress',
-    category: 'Textiles',
-    price: 168,
-    image:
-      'https://images.unsplash.com/photo-1469334031218-e382a71b716b?auto=format&fit=crop&w=720&q=80',
-    quantity: 1,
-  },
-  {
-    id: 2,
-    name: 'Lalibela Filigree Earrings',
-    category: 'Jewelry',
-    price: 124,
-    image:
-      'https://images.unsplash.com/photo-1611591437281-460bfbe1220a?auto=format&fit=crop&w=720&q=80',
-    quantity: 1,
-  },
-  {
-    id: 3,
-    name: 'Harar Palm Tote',
-    category: 'Accessories',
-    price: 86,
-    image:
-      'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=720&q=80',
-    quantity: 2,
-  },
-];
+import { useCart } from '@/lib/cart-context';
 
 export default function App() {
-  const [cartItems, setCartItems] = useState<CartItem[]>(initialItems);
+  const { items, updateQuantity: updateCartQuantity, removeItem: removeCartItem } = useCart();
   const [leavingIds, setLeavingIds] = useState<number[]>([]);
   const [quantityPulseId, setQuantityPulseId] = useState<number | null>(null);
   const [couponCode, setCouponCode] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
 
   const subtotal = useMemo(
-    () => cartItems.reduce((total, item) => total + item.price * item.quantity, 0),
-    [cartItems],
+    () => items.reduce((total, item) => total + item.price * item.quantity, 0),
+    [items],
   );
   const discount = appliedCoupon ? subtotal * 0.1 : 0;
   const shipping = subtotal > 180 || subtotal === 0 ? 0 : 12;
@@ -66,9 +28,7 @@ export default function App() {
 
   const updateQuantity = (id: number, nextQuantity: number) => {
     if (nextQuantity < 1) return;
-    setCartItems((current) =>
-      current.map((item) => (item.id === id ? { ...item, quantity: nextQuantity } : item)),
-    );
+    updateCartQuantity(id, nextQuantity);
     setQuantityPulseId(id);
     window.setTimeout(() => setQuantityPulseId((active) => (active === id ? null : active)), 220);
   };
@@ -76,7 +36,7 @@ export default function App() {
   const removeItem = (id: number) => {
     setLeavingIds((current) => (current.includes(id) ? current : [...current, id]));
     window.setTimeout(() => {
-      setCartItems((current) => current.filter((item) => item.id !== id));
+      removeCartItem(id);
       setLeavingIds((current) => current.filter((itemId) => itemId !== id));
     }, 360);
   };
@@ -87,7 +47,7 @@ export default function App() {
     setCouponCode('');
   };
 
-  const emptyState = cartItems.length === 0;
+  const emptyState = items.length === 0;
 
   return (
     <div className="min-h-screen bg-[#FAFAF9] text-[#1C1C1C] font-inter">
@@ -132,7 +92,7 @@ export default function App() {
           <section className="mt-10 grid grid-cols-1 gap-12 lg:grid-cols-12 lg:gap-14">
             <div className="lg:col-span-8">
               <ul className="divide-y divide-[#ece6da]">
-                {cartItems.map((item) => {
+                {items.map((item) => {
                   const isLeaving = leavingIds.includes(item.id);
                   return (
                     <li

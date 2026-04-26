@@ -6,10 +6,12 @@ import { Footer } from '@/components/shared/footer';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { useAuth } from '@/lib/auth-context';
+import { useCart } from '@/lib/cart-context';
 import { toggleWishlistProduct, getWishlistProductIds } from '@/lib/wishlist';
 import { Heart } from 'lucide-react';
 import Link from 'next/link';
 import ChatSupport from '@/components/ChatSupport';
+import { toast } from 'react-toastify';
 
 type Product = {
   id: number;
@@ -119,6 +121,7 @@ const materialsList = ['Clay', 'Cotton', 'Silver', 'Straw', 'Leather'];
 export default function productPage() {
   const searchParams = useSearchParams();
   const { token } = useAuth();
+  const { addItem } = useCart();
   const wishlistUserKey = token ?? 'guest';
   const [sortBy, setSortBy] = useState<'curated' | 'price-low' | 'price-high' | 'newest' | 'rating-high' | 'rating-low'>('curated');
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -235,6 +238,20 @@ export default function productPage() {
     const { ids, added } = toggleWishlistProduct(wishlistUserKey, productId);
     setWishlistIds(ids);
     setWishlistMessage(added ? 'Added to wishlist' : 'Removed from wishlist');
+    toast.info(added ? 'Added to wishlist' : 'Removed from wishlist');
+  };
+
+  const handleAddToCart = (event: React.MouseEvent<HTMLButtonElement>, product: Product) => {
+    event.preventDefault();
+    addItem({
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      image: product.image,
+      quantity: 1,
+      category: product.category,
+    });
+    toast.success(`${product.name} added to cart`);
   };
 
   const hasActiveFilters = activeCategory !== 'All' || showNewOnly || showHandmadeOnly || selectedRegions.length > 0 || selectedMaterials.length > 0 || priceRange[0] > 0 || priceRange[1] < 500;
@@ -374,10 +391,7 @@ export default function productPage() {
                         ${product.price}
                       </p>
                       <Button
-                        onClick={(e) => {
-                          e.preventDefault();
-                          // Add to cart logic can be triggered here
-                        }}
+                        onClick={(event) => handleAddToCart(event, product)}
                         variant="outline"
                         className="h-9 rounded-none border-[#ddd8cf] bg-transparent px-4 text-[10px] uppercase tracking-widest transition-colors hover:border-[#C6A75E] hover:bg-[#C6A75E] hover:text-white"
                       >

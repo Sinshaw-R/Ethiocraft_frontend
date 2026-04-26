@@ -10,10 +10,13 @@ import { ShoppingBag, Package, Heart, Settings } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/lib/auth-context'
+import { useCart } from '@/lib/cart-context'
 import { getWishlistProductIds, toggleWishlistProduct } from '@/lib/wishlist'
+import { toast } from 'react-toastify'
 
 export default function CustomerDashboard() {
   const { token } = useAuth()
+  const { addItem } = useCart()
   const wishlistUserKey = token ?? 'guest'
   const recentOrders = [
     {
@@ -108,9 +111,22 @@ export default function CustomerDashboard() {
     [wishlistIds],
   )
 
-  const handleRemoveWishlistItem = (productId: number) => {
+  const handleRemoveWishlistItem = (productId: number, productName: string) => {
     const { ids } = toggleWishlistProduct(wishlistUserKey, productId)
     setWishlistIds(ids)
+    toast.info(`${productName} removed from wishlist`)
+  }
+
+  const handleAddWishlistItemToCart = (item: (typeof catalogProducts)[number]) => {
+    addItem({
+      id: item.id,
+      name: item.name,
+      price: item.price,
+      image: item.image,
+      quantity: 1,
+      category: 'Wishlist',
+    })
+    toast.success(`${item.name} added to cart`)
   }
 
   const getStatusColor = (status: string) => {
@@ -258,10 +274,14 @@ export default function CustomerDashboard() {
                           <p className="text-sm text-muted-foreground">{item.artisan}</p>
                           <p className="text-lg font-bold text-secondary mt-2">${item.price}</p>
                           <div className="flex gap-2 mt-3">
-                            <Button size="sm" className="flex-1 bg-primary">
+                            <Button
+                              size="sm"
+                              className="flex-1 bg-primary"
+                              onClick={() => handleAddWishlistItemToCart(item)}
+                            >
                               Add to Cart
                             </Button>
-                            <Button size="sm" variant="outline" onClick={() => handleRemoveWishlistItem(item.id)}>
+                            <Button size="sm" variant="outline" onClick={() => handleRemoveWishlistItem(item.id, item.name)}>
                               Remove
                             </Button>
                           </div>

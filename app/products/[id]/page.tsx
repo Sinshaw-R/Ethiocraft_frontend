@@ -24,6 +24,17 @@ type Review = {
   isVerified: boolean;
 };
 
+// --- Types ---
+
+type Review = {
+  id: string;
+  author: string;
+  rating: number;
+  date: string;
+  comment: string;
+  isVerified: boolean;
+};
+
 type DetailProduct = {
   id: number;
   name: string;
@@ -240,6 +251,7 @@ export default function App() {
     const { added } = toggleWishlistProduct(wishlistUserKey, product.id);
     setIsWishlisted(added);
     setWishlistMessage(added ? "Added to wishlist" : "Removed from wishlist");
+    toast.info(added ? "Added to wishlist" : "Removed from wishlist");
   };
 
   const handleAddToCart = () => {

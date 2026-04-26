@@ -111,9 +111,10 @@ export default function CustomerDashboard() {
     [wishlistIds],
   )
 
-  const handleRemoveWishlistItem = (productId: number) => {
+  const handleRemoveWishlistItem = (productId: number, productName: string) => {
     const { ids } = toggleWishlistProduct(wishlistUserKey, productId)
     setWishlistIds(ids)
+    toast.info(`${productName} removed from wishlist`)
   }
 
   const handleAddWishlistItemToCart = (item: (typeof catalogProducts)[number]) => {
@@ -280,7 +281,7 @@ export default function CustomerDashboard() {
                             >
                               Add to Cart
                             </Button>
-                            <Button size="sm" variant="outline" onClick={() => handleRemoveWishlistItem(item.id)}>
+                            <Button size="sm" variant="outline" onClick={() => handleRemoveWishlistItem(item.id, item.name)}>
                               Remove
                             </Button>
                           </div>

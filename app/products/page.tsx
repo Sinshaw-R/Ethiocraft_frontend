@@ -6,10 +6,7 @@ import { Footer } from '@/components/shared/footer';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { useAuth } from '@/lib/auth-context';
-<<<<<<< HEAD
-=======
 import { useCart } from '@/lib/cart-context';
->>>>>>> 8c3985f42246b5b83eab36049412039f6e100bf4
 import { toggleWishlistProduct, getWishlistProductIds } from '@/lib/wishlist';
 import { Heart } from 'lucide-react';
 import Link from 'next/link';
@@ -27,6 +24,8 @@ type Product = {
   material?: string;
   rating: number;
 };
+
+// UC17 Submission Logic
 
 const products: Product[] = [
   {
@@ -124,10 +123,7 @@ const materialsList = ['Clay', 'Cotton', 'Silver', 'Straw', 'Leather'];
 export default function productPage() {
   const searchParams = useSearchParams();
   const { token } = useAuth();
-<<<<<<< HEAD
-=======
   const { addItem } = useCart();
->>>>>>> 8c3985f42246b5b83eab36049412039f6e100bf4
   const wishlistUserKey = token ?? 'guest';
   const [sortBy, setSortBy] = useState<'curated' | 'price-low' | 'price-high' | 'newest' | 'rating-high' | 'rating-low'>('curated');
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -247,8 +243,6 @@ export default function productPage() {
     toast.info(added ? 'Added to wishlist' : 'Removed from wishlist');
   };
 
-<<<<<<< HEAD
-=======
   const handleAddToCart = (event: React.MouseEvent<HTMLButtonElement>, product: Product) => {
     event.preventDefault();
     addItem({
@@ -262,7 +256,6 @@ export default function productPage() {
     toast.success(`${product.name} added to cart`);
   };
 
->>>>>>> 8c3985f42246b5b83eab36049412039f6e100bf4
   const hasActiveFilters = activeCategory !== 'All' || showNewOnly || showHandmadeOnly || selectedRegions.length > 0 || selectedMaterials.length > 0 || priceRange[0] > 0 || priceRange[1] < 500;
 
   return (

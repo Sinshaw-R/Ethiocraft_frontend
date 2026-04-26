@@ -3,8 +3,11 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import localFont from 'next/font/local'
 import './globals.css'
+import 'react-toastify/dist/ReactToastify.css'
 import { HeaderProvider } from '@/lib/header-context'
 import { AuthProvider } from '@/lib/auth-context'
+import { CartProvider } from '@/lib/cart-context'
+import ToastProvider from '@/components/ToastProvider'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -57,9 +60,12 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${inter.variable} ${aeonik.variable} ${drukMedium.variable} ${logo.variable} font-inter antialiased bg-background text-foreground`}>
         <AuthProvider>
-          <HeaderProvider>
-            {children}
-          </HeaderProvider>
+          <CartProvider>
+            <HeaderProvider>
+              {children}
+              <ToastProvider />
+            </HeaderProvider>
+          </CartProvider>
         </AuthProvider>
       </body>
     </html>

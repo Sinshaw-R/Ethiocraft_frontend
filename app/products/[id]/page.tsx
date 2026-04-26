@@ -4,12 +4,28 @@ import { Footer } from "@/components/shared/footer";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
+<<<<<<< HEAD
+=======
+import { useCart } from "@/lib/cart-context";
+>>>>>>> 8c3985f42246b5b83eab36049412039f6e100bf4
 import { getWishlistProductIds, toggleWishlistProduct } from "@/lib/wishlist";
 import { Heart } from "lucide-react";
 import React from "react";
 import { createElement, useEffect, useState } from "react";
 import Link from "next/link";
 import ChatSupport from "@/components/ChatSupport";
+import { toast } from "react-toastify";
+
+// --- Types ---
+
+type Review = {
+  id: string;
+  author: string;
+  rating: number;
+  date: string;
+  comment: string;
+  isVerified: boolean;
+};
 
 // --- Types ---
 
@@ -124,6 +140,10 @@ const initialReviews: Review[] = [
 
 export default function App() {
   const { token } = useAuth();
+<<<<<<< HEAD
+=======
+  const { addItem } = useCart();
+>>>>>>> 8c3985f42246b5b83eab36049412039f6e100bf4
   const wishlistUserKey = token ?? "guest";
   // UI States
   const [quantity, setQuantity] = useState(1);
@@ -239,6 +259,21 @@ export default function App() {
     setWishlistMessage(added ? "Added to wishlist" : "Removed from wishlist");
   };
 
+<<<<<<< HEAD
+=======
+  const handleAddToCart = () => {
+    addItem({
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      image: product.images[0] ?? "",
+      quantity,
+      category: product.category,
+    });
+    toast.success(`${product.name} added to cart`);
+  };
+
+>>>>>>> 8c3985f42246b5b83eab36049412039f6e100bf4
   const showImageMode = () => setMediaMode("image");
   const show3DMode = () => {
     setMediaMode("3d");
@@ -392,7 +427,14 @@ export default function App() {
                   +
                 </button>
               </div>
+<<<<<<< HEAD
               <button className="h-12 border border-[#C6A75E] bg-[#C6A75E] px-8 text-[10px] uppercase tracking-widest text-white transition-colors hover:bg-transparent hover:text-[#C6A75E]">
+=======
+              <button
+                onClick={handleAddToCart}
+                className="h-12 border border-[#C6A75E] bg-[#C6A75E] px-8 text-[10px] uppercase tracking-widest text-white transition-colors hover:bg-transparent hover:text-[#C6A75E]"
+              >
+>>>>>>> 8c3985f42246b5b83eab36049412039f6e100bf4
                 Add to Cart
               </button>
 

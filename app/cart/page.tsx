@@ -15,17 +15,15 @@ export default function App() {
   const { items, updateQuantity: updateCartQuantity, removeItem: removeCartItem } = useCart();
   const [leavingIds, setLeavingIds] = useState<number[]>([]);
   const [quantityPulseId, setQuantityPulseId] = useState<number | null>(null);
-  const [couponCode, setCouponCode] = useState('');
-  const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
+  const TAX_RATE = 0.15;
 
   const subtotal = useMemo(
     () => items.reduce((total, item) => total + item.price * item.quantity, 0),
     [items],
   );
-  const discount = appliedCoupon ? subtotal * 0.1 : 0;
   const shipping = subtotal > 180 || subtotal === 0 ? 0 : 12;
-  const tax = (subtotal - discount) * 0.08;
-  const total = subtotal - discount + shipping + tax;
+  const tax = subtotal * TAX_RATE;
+  const total = subtotal + shipping + tax;
 
   const updateQuantity = (id: number, nextQuantity: number) => {
     if (nextQuantity < 1) return;
@@ -41,12 +39,6 @@ export default function App() {
       setLeavingIds((current) => current.filter((itemId) => itemId !== id));
       toast.info(`${name} removed from cart`);
     }, 360);
-  };
-
-  const applyPromoCode = () => {
-    if (couponCode.trim().toUpperCase() !== 'WELCOME10') return;
-    setAppliedCoupon('WELCOME10');
-    setCouponCode('');
   };
 
   const emptyState = items.length === 0;
@@ -173,43 +165,15 @@ export default function App() {
                   Order Summary
                 </h2>
 
-                <div className="font-aeonik mt-7 border-t border-[#e7e1d6] pt-6">
-                  <label htmlFor="promo" className="text-xs uppercase tracking-[0.1em] text-[#6d665c]">
-                    Promo Code
-                  </label>
-                  <div className="mt-3 flex items-center gap-2">
-                    <input
-                      id="promo"
-                      value={couponCode}
-                      onChange={(event) => setCouponCode(event.target.value)}
-                      placeholder="Enter code"
-                      className="h-11 w-full border-b border-[#d8d1c3] bg-transparent px-1 text-sm outline-none placeholder:text-[#9f998f] focus:border-[#C6A75E]"
-                    />
-                    <button
-                      onClick={applyPromoCode}
-                      className="h-11 px-3 text-xs uppercase tracking-[0.08em] text-[#1C1C1C] transition-colors hover:text-[#C6A75E]"
-                    >
-                      Apply
-                    </button>
-                  </div>
-                  {appliedCoupon ? <p className="mt-2 text-xs text-[#5d7e4a]">WELCOME10 applied</p> : null}
-                </div>
-
                 <dl className="font-aeonik mt-7 space-y-3 text-sm">
                   <div className="flex items-center justify-between">
                     <dt className="text-[#656056]">Subtotal</dt>
                     <dd>${subtotal.toFixed(2)}</dd>
                   </div>
-                  {discount > 0 ? (
-                    <div className="flex items-center justify-between text-[#5d7e4a]">
-                      <dt>Discount</dt>
-                      <dd>- ${discount.toFixed(2)}</dd>
-                    </div>
-                  ) : null}
-                  <div className="flex items-center justify-between">
+                  {/* <div className="flex items-center justify-between">
                     <dt className="text-[#656056]">Shipping</dt>
                     <dd>{shipping === 0 ? 'Free' : `$${shipping.toFixed(2)}`}</dd>
-                  </div>
+                  </div> */}
                   <div className="flex items-center justify-between">
                     <dt className="text-[#656056]">Tax</dt>
                     <dd>${tax.toFixed(2)}</dd>

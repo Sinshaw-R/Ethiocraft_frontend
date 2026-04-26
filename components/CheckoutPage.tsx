@@ -1,18 +1,28 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { MapPin, Phone, CreditCard, CheckCircle, Lock, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { paymentService } from '@/lib/payment-service'
+import { useCart } from '@/lib/cart-context'
 
 type CheckoutStep = 'shipping' | 'payment' | 'review' | 'confirmation'
+type OrderSummaryData = {
+  subtotal: number
+  shipping: number
+  tax: number
+  total: number
+  items: Array<{ name: string; qty: number; price: number }>
+}
 
 export default function CheckoutPage() {
+  const { items: cartItems, cartTotal, clearCart } = useCart()
   const [currentStep, setCurrentStep] = useState<CheckoutStep>('shipping')
   const [isProcessing, setIsProcessing] = useState(false)
   const [orderNumber, setOrderNumber] = useState<string>('')
   const [paymentError, setPaymentError] = useState<string>('')
+  const [confirmedOrderData, setConfirmedOrderData] = useState<OrderSummaryData | null>(null)
   const [formData, setFormData] = useState({
     email: '',
     phone: '',
@@ -32,16 +42,18 @@ export default function CheckoutPage() {
     { id: 'confirmation', label: 'Confirmation', icon: CheckCircle },
   ] as const
 
-  const orderData = {
-    subtotal: 6350,
-    shipping: 0,
-    tax: 952.5,
-    total: 7302.5,
-    items: [
-      { name: 'Hand-Woven Ethiopian Basket', qty: 1, price: 2850 },
-      { name: 'Traditional Ethiopian Coffee Roaster', qty: 2, price: 3500 },
-    ],
-  }
+  const shippingCost = formData.shippingMethod === 'express' ? 750 : 250
+  const orderData = useMemo(() => {
+    const subtotal = cartTotal
+    const tax = subtotal * 0.15
+    const total = subtotal + shippingCost + tax
+    const items = cartItems.map((item) => ({ name: item.name, qty: item.quantity, price: item.price }))
+
+    return { subtotal, shipping: shippingCost, tax, total, items }
+  }, [cartItems, cartTotal, shippingCost])
+
+  const isCartEmpty = cartItems.length === 0
+  const summaryData = currentStep === 'confirmation' && confirmedOrderData ? confirmedOrderData : orderData
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target
@@ -49,6 +61,7 @@ export default function CheckoutPage() {
   }
 
   const handleNext = () => {
+    if (isCartEmpty) return
     if (currentStep === 'shipping') setCurrentStep('payment')
     else if (currentStep === 'payment') setCurrentStep('review')
     else if (currentStep === 'review') setCurrentStep('confirmation')
@@ -60,6 +73,11 @@ export default function CheckoutPage() {
   }
 
   const handlePlaceOrder = async () => {
+    if (isCartEmpty) {
+      setPaymentError('Your cart is empty. Add items before placing an order.')
+      return
+    }
+
     setIsProcessing(true)
     setPaymentError('')
 
@@ -70,8 +88,11 @@ export default function CheckoutPage() {
       setOrderNumber(orderNum)
 
       // Calculate totals using payment service
-      const shippingCost = formData.shippingMethod === 'express' ? 750 : 250
       const totals = paymentService.calculateOrderTotal(orderData.subtotal, shippingCost)
+      const finalizedOrderData: OrderSummaryData = {
+        ...orderData,
+        total: totals.total,
+      }
 
       // Initialize payment based on selected method
       if (formData.paymentMethod === 'chapa' || formData.paymentMethod === 'telebirr') {
@@ -94,13 +115,17 @@ export default function CheckoutPage() {
             // window.location.href = paymentResponse.redirectUrl
           }
           // For demo, move to confirmation
+          setConfirmedOrderData(finalizedOrderData)
           setCurrentStep('confirmation')
+          clearCart()
         } else {
           setPaymentError(paymentResponse.errorMessage || 'Payment initialization failed')
         }
       } else if (formData.paymentMethod === 'cod') {
         // Cash on delivery - skip payment processing
+        setConfirmedOrderData(finalizedOrderData)
         setCurrentStep('confirmation')
+        clearCart()
       }
     } catch (error) {
       console.error('[v0] Payment error:', error)
@@ -294,10 +319,16 @@ export default function CheckoutPage() {
 
                 <Button
                   onClick={handleNext}
+                  disabled={isCartEmpty}
                   className="w-full mt-8 bg-primary text-primary-foreground hover:bg-primary/90 h-12 font-medium"
                 >
                   Continue to Payment
                 </Button>
+                {isCartEmpty && (
+                  <p className="mt-3 text-sm text-muted-foreground">
+                    Your cart is empty. <Link href="/products" className="text-primary underline">Browse products</Link> to continue.
+                  </p>
+                )}
               </div>
             )}
 
@@ -383,6 +414,7 @@ export default function CheckoutPage() {
                   </Button>
                   <Button
                     onClick={handleNext}
+                    disabled={isCartEmpty}
                     className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90 h-12 font-medium"
                   >
                     Review Order
@@ -444,7 +476,7 @@ export default function CheckoutPage() {
                   </Button>
                   <Button
                     onClick={handlePlaceOrder}
-                    disabled={isProcessing}
+                    disabled={isProcessing || isCartEmpty}
                     className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90 h-12 font-medium"
                   >
                     {isProcessing ? (
@@ -500,7 +532,7 @@ export default function CheckoutPage() {
               <h3 className="text-lg font-serif font-bold text-foreground">Order Summary</h3>
 
               <div className="space-y-3 pb-6 border-b border-border max-h-64 overflow-y-auto">
-                {orderData.items.map((item, idx) => (
+                {summaryData.items.map((item, idx) => (
                   <div key={idx} className="flex justify-between text-sm">
                     <span className="text-muted-foreground">{item.name}</span>
                     <span className="text-foreground font-medium">ETB {(item.price * item.qty).toLocaleString()}</span>
@@ -511,21 +543,21 @@ export default function CheckoutPage() {
               <div className="space-y-3 pb-6 border-b border-border">
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Subtotal</span>
-                  <span className="text-foreground font-medium">ETB {orderData.subtotal.toLocaleString()}</span>
+                  <span className="text-foreground font-medium">ETB {summaryData.subtotal.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Shipping</span>
-                  <span className="text-foreground font-medium">{orderData.shipping === 0 ? 'Free' : `ETB ${orderData.shipping}`}</span>
+                  <span className="text-foreground font-medium">{summaryData.shipping === 0 ? 'Free' : `ETB ${summaryData.shipping}`}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Tax</span>
-                  <span className="text-foreground font-medium">ETB {orderData.tax.toLocaleString()}</span>
+                  <span className="text-foreground font-medium">ETB {summaryData.tax.toLocaleString()}</span>
                 </div>
               </div>
 
               <div className="flex justify-between items-baseline">
                 <span className="text-foreground font-medium">Total</span>
-                <span className="text-2xl font-bold text-primary">ETB {orderData.total.toLocaleString()}</span>
+                <span className="text-2xl font-bold text-primary">ETB {summaryData.total.toLocaleString()}</span>
               </div>
             </div>
           </div>

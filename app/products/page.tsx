@@ -25,6 +25,8 @@ type Product = {
   rating: number;
 };
 
+// UC17 Submission Logic
+
 const products: Product[] = [
   {
     id: 1,

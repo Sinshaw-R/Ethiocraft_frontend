@@ -11,6 +11,7 @@ import { toggleWishlistProduct, getWishlistProductIds } from '@/lib/wishlist';
 import { Heart } from 'lucide-react';
 import Link from 'next/link';
 import ChatSupport from '@/components/ChatSupport';
+import { toast } from 'react-toastify';
 
 type Product = {
   id: number;
@@ -249,6 +250,7 @@ export default function productPage() {
       quantity: 1,
       category: product.category,
     });
+    toast.success(`${product.name} added to cart`);
   };
 
   const hasActiveFilters = activeCategory !== 'All' || showNewOnly || showHandmadeOnly || selectedRegions.length > 0 || selectedMaterials.length > 0 || priceRange[0] > 0 || priceRange[1] < 500;

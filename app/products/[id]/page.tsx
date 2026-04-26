@@ -11,6 +11,7 @@ import React from "react";
 import { createElement, useEffect, useState } from "react";
 import Link from "next/link";
 import ChatSupport from "@/components/ChatSupport";
+import { toast } from "react-toastify";
 
 // --- Types ---
 
@@ -250,6 +251,7 @@ export default function App() {
       quantity,
       category: product.category,
     });
+    toast.success(`${product.name} added to cart`);
   };
 
   const showImageMode = () => setMediaMode("image");

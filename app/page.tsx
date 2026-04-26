@@ -11,6 +11,7 @@ import { StorySection } from '@/components/shared/story-section'
 import { useHeader } from '@/lib/header-context'
 import { useCart } from '@/lib/cart-context'
 import ChatSupport from '@/components/ChatSupport'
+import { toast } from 'react-toastify'
 
 export default function Home() {
   const { isHovered } = useHeader()
@@ -93,6 +94,7 @@ export default function Home() {
       quantity: 1,
       category: product.category,
     })
+    toast.success(`${product.name} added to cart`)
   }
 
   return (

@@ -12,6 +12,7 @@ import Link from 'next/link'
 import { useAuth } from '@/lib/auth-context'
 import { useCart } from '@/lib/cart-context'
 import { getWishlistProductIds, toggleWishlistProduct } from '@/lib/wishlist'
+import { toast } from 'react-toastify'
 
 export default function CustomerDashboard() {
   const { token } = useAuth()
@@ -124,6 +125,7 @@ export default function CustomerDashboard() {
       quantity: 1,
       category: 'Wishlist',
     })
+    toast.success(`${item.name} added to cart`)
   }
 
   const getStatusColor = (status: string) => {

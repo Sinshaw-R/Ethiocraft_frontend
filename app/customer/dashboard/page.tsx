@@ -7,9 +7,14 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ShoppingBag, Package, Heart, Settings } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
+import { useAuth } from '@/lib/auth-context'
+import { getWishlistProductIds, toggleWishlistProduct } from '@/lib/wishlist'
 
 export default function CustomerDashboard() {
+  const { token } = useAuth()
+  const wishlistUserKey = token ?? 'guest'
   const recentOrders = [
     {
       id: 'ORD-001',
@@ -34,22 +39,79 @@ export default function CustomerDashboard() {
     },
   ]
 
-  const wishlistItems = [
+  const catalogProducts = [
     {
       id: 1,
       name: 'Leather Shoulder Bag',
-      price: '$129.99',
-      image: '/placeholder.svg?height=200&width=200',
-      artisan: 'Crafts by Aisha',
+      price: 168,
+      image: 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=900&q=80',
+      artisan: 'EthioCraft Artisan',
     },
     {
       id: 2,
-      name: 'Coffee Ceremony Set',
-      price: '$79.99',
-      image: '/placeholder.svg?height=200&width=200',
-      artisan: 'Ethiopian Heritage Co.',
+      name: 'Lalibela Filigree Earrings',
+      price: 124,
+      image: 'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?auto=format&fit=crop&w=900&q=80',
+      artisan: 'EthioCraft Artisan',
+    },
+    {
+      id: 3,
+      name: 'Sidama Coffee Ceremony Set',
+      price: 210,
+      image: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=900&q=80',
+      artisan: 'EthioCraft Artisan',
+    },
+    {
+      id: 4,
+      name: 'Woven Mesob Basket',
+      price: 96,
+      image: 'https://images.unsplash.com/photo-1610701596061-2ecf227e85b2?auto=format&fit=crop&w=900&q=80',
+      artisan: 'EthioCraft Artisan',
+    },
+    {
+      id: 5,
+      name: 'Addis Leather Weekender',
+      price: 182,
+      image: 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?auto=format&fit=crop&w=900&q=80',
+      artisan: 'EthioCraft Artisan',
+    },
+    {
+      id: 6,
+      name: 'Hand-Loomed Gabi Shawl',
+      price: 88,
+      image: 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=900&q=80',
+      artisan: 'EthioCraft Artisan',
+    },
+    {
+      id: 7,
+      name: 'Axum Cross Pendant',
+      price: 116,
+      image: 'https://images.unsplash.com/photo-1617038260897-41a1f14a8ca0?auto=format&fit=crop&w=900&q=80',
+      artisan: 'EthioCraft Artisan',
+    },
+    {
+      id: 8,
+      name: 'Harar Palm Tote',
+      price: 74,
+      image: 'https://images.unsplash.com/photo-1594223274512-ad4803739b7c?auto=format&fit=crop&w=900&q=80',
+      artisan: 'EthioCraft Artisan',
     },
   ]
+  const [wishlistIds, setWishlistIds] = useState<number[]>([])
+
+  useEffect(() => {
+    setWishlistIds(getWishlistProductIds(wishlistUserKey))
+  }, [wishlistUserKey])
+
+  const wishlistItems = useMemo(
+    () => catalogProducts.filter((product) => wishlistIds.includes(product.id)),
+    [wishlistIds],
+  )
+
+  const handleRemoveWishlistItem = (productId: number) => {
+    const { ids } = toggleWishlistProduct(wishlistUserKey, productId)
+    setWishlistIds(ids)
+  }
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -109,7 +171,7 @@ export default function CustomerDashboard() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Wishlist Items</p>
-                  <p className="text-2xl font-bold">5</p>
+                  <p className="text-2xl font-bold">{wishlistItems.length}</p>
                 </div>
               </div>
             </Card>
@@ -174,32 +236,41 @@ export default function CustomerDashboard() {
             <TabsContent value="wishlist" className="space-y-4">
               <h2 className="text-xl font-semibold mb-4">Your Wishlist</h2>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {wishlistItems.map((item) => (
-                  <Card key={item.id} className="overflow-hidden">
-                    <div className="flex gap-4 p-4">
-                      <img
-                        src={item.image || "/placeholder.svg"}
-                        alt={item.name}
-                        className="w-24 h-24 object-cover rounded-lg bg-muted"
-                      />
-                      <div className="flex-1">
-                        <p className="font-semibold">{item.name}</p>
-                        <p className="text-sm text-muted-foreground">{item.artisan}</p>
-                        <p className="text-lg font-bold text-secondary mt-2">{item.price}</p>
-                        <div className="flex gap-2 mt-3">
-                          <Button size="sm" className="flex-1 bg-primary">
-                            Add to Cart
-                          </Button>
-                          <Button size="sm" variant="outline">
-                            Remove
-                          </Button>
+              {wishlistItems.length === 0 ? (
+                <Card className="p-8 text-center">
+                  <p className="text-muted-foreground">No wishlist items yet.</p>
+                  <Link href="/products">
+                    <Button className="mt-4">Browse Products</Button>
+                  </Link>
+                </Card>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {wishlistItems.map((item) => (
+                    <Card key={item.id} className="overflow-hidden">
+                      <div className="flex gap-4 p-4">
+                        <img
+                          src={item.image || "/placeholder.svg"}
+                          alt={item.name}
+                          className="w-24 h-24 object-cover rounded-lg bg-muted"
+                        />
+                        <div className="flex-1">
+                          <p className="font-semibold">{item.name}</p>
+                          <p className="text-sm text-muted-foreground">{item.artisan}</p>
+                          <p className="text-lg font-bold text-secondary mt-2">${item.price}</p>
+                          <div className="flex gap-2 mt-3">
+                            <Button size="sm" className="flex-1 bg-primary">
+                              Add to Cart
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => handleRemoveWishlistItem(item.id)}>
+                              Remove
+                            </Button>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </Card>
-                ))}
-              </div>
+                    </Card>
+                  ))}
+                </div>
+              )}
             </TabsContent>
 
             {/* Account Tab */}

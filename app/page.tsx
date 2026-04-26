@@ -54,26 +54,26 @@ export default function Home() {
   ]
 
   const categories = [
-    { 
-      name: 'Textiles', 
+    {
+      name: 'Textiles',
       image: '/placeholder.svg?height=600&width=400',
       description: 'Authentic hand-loomed fabrics and traditional attire crafted with heritage techniques.',
       amount: '45 Items'
     },
-    { 
-      name: 'Jewelry', 
+    {
+      name: 'Jewelry',
       image: '/placeholder.svg?height=600&width=400',
       description: 'Exquisite gold and silver filigree masterpieces from master Ethiopian jewelers.',
       amount: '32 Items'
     },
-    { 
-      name: 'Crafts', 
+    {
+      name: 'Crafts',
       image: '/placeholder.svg?height=600&width=400',
       description: 'Hand-woven baskets and traditional home decor reflecting local cultural motifs.',
       amount: '18 Items'
     },
-    { 
-      name: 'Accessories', 
+    {
+      name: 'Accessories',
       image: '/placeholder.svg?height=600&width=400',
       description: 'Premium Ethiopian leather goods and hand-tooled bags for the modern lifestyle.',
       amount: '24 Items'
@@ -81,24 +81,24 @@ export default function Home() {
   ]
 
   return (
-    
-      <>
+
+    <>
       <Header />
 
       {/* Hero Section */}
-      <section 
+      <section
         id="hero"
         className="relative w-full h-screen bg-cover bg-center bg-no-repeat flex flex-col justify-center"
         style={{
           backgroundImage: 'url(/hero_page.jpg)',
           backgroundSize: 'cover',
           backgroundPosition: 'left bottom',
-         
+
         }}
       >
         {/* Dark overlay for text readability */}
         <div className="absolute inset-0 bg-gradient-to-r from-black/100 via-black/40 to-black/10"></div>
-        
+
         {/* Content - Positioned at left mid */}
         <div className="relative z-10 container mx-auto px-4 text-left text-white">
           <h1 className="text-4xl tracking-wide uppercase md:text-7xl font-bold mb-8 text-balance max-w-4xl drop-shadow-2xl font-druk-medium text-shadow-lg">
@@ -128,8 +128,8 @@ export default function Home() {
             <h2 className="text-2xl font-druk-medium tracking-wide md:text-4xl font-bold uppercase whitespace-nowrap">Shop</h2>
             <nav className="flex flex-wrap gap-x-6 gap-y-2">
               {categories.map((cat) => (
-                <Link 
-                  key={cat.name} 
+                <Link
+                  key={cat.name}
                   href={`/products?category=${cat.name.toLowerCase()}`}
                   className="text-xs md:text-sm font-bold uppercase tracking-widest text-muted-foreground hover:text-secondary transition-colors"
                 >
@@ -144,10 +144,10 @@ export default function Home() {
               <Link key={cat.name} href={`/products?category=${cat.name.toLowerCase()}`}>
                 <Card className="group overflow-hidden hover:shadow-md transition-all duration-500 h-full flex flex-col border-none bg-background">
                   <div className="relative aspect-[4/5] overflow-hidden bg-muted">
-                    <img 
-                      src={cat.image} 
-                      alt={cat.name} 
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" 
+                    <img
+                      src={cat.image}
+                      alt={cat.name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                     />
                   </div>
                   <div className="p-6 flex flex-col flex-1">
@@ -250,9 +250,9 @@ export default function Home() {
             {/* Image Content */}
             <div className="order-1 lg:order-2">
               <div className="relative aspect-video lg:aspect-square overflow-hidden rounded-2xl shadow-xl">
-                <img 
-                  src="Images/weaving_man.jpg?height=800&width=800" 
-                  alt="Ethiopian artisan at work" 
+                <img
+                  src="Images/weaving_man.jpg?height=800&width=800"
+                  alt="Ethiopian artisan at work"
                   className="w-full h-full object-cover hover:scale-105 transition-transform duration-700"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none"></div>

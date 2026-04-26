@@ -9,6 +9,7 @@ import { gsap } from 'gsap'
 import { useHeader } from '@/lib/header-context'
 import { Separator } from '@/components/ui/separator'
 import { useAuth } from '@/lib/auth-context'
+import { useCart } from '@/lib/cart-context'
 import MegaMenu from '../MegaMenu'
 
 /** Returns the dashboard URL for the currently logged-in role. */
@@ -31,6 +32,7 @@ export function Header() {
   const searchInputRef = useRef<HTMLInputElement>(null)
   const { setIsHovered: setGlobalIsHovered } = useHeader()
   const { token, role } = useAuth()
+  const { cartCount } = useCart()
   const isLoggedIn = Boolean(token)
 
   useEffect(() => {
@@ -196,14 +198,19 @@ export function Header() {
                   </Link>
                 )}
                 <Link href="/cart">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className={`transition-colors ${textColor} hover:bg-[#FAFAF9]/20`}
-                >
-                  <ShoppingCart className="w-5 h-5" />
-                </Button>
-              </Link>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={`relative transition-colors ${textColor} hover:bg-[#FAFAF9]/20`}
+                  >
+                    <ShoppingCart className="w-5 h-5" />
+                    {cartCount > 0 && (
+                      <span className="absolute -right-1 -top-1 min-w-5 h-5 px-1 rounded-full bg-primary text-primary-foreground text-[10px] leading-5 text-center font-bold">
+                        {cartCount}
+                      </span>
+                    )}
+                  </Button>
+                </Link>
               </div>
 
               <Button

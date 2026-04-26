@@ -4,6 +4,7 @@ import { Footer } from "@/components/shared/footer";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
+import { useCart } from "@/lib/cart-context";
 import { getWishlistProductIds, toggleWishlistProduct } from "@/lib/wishlist";
 import { Heart } from "lucide-react";
 import React from "react";
@@ -124,6 +125,7 @@ const initialReviews: Review[] = [
 
 export default function App() {
   const { token } = useAuth();
+  const { addItem } = useCart();
   const wishlistUserKey = token ?? "guest";
   // UI States
   const [quantity, setQuantity] = useState(1);
@@ -237,6 +239,17 @@ export default function App() {
     const { added } = toggleWishlistProduct(wishlistUserKey, product.id);
     setIsWishlisted(added);
     setWishlistMessage(added ? "Added to wishlist" : "Removed from wishlist");
+  };
+
+  const handleAddToCart = () => {
+    addItem({
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      image: product.images[0] ?? "",
+      quantity,
+      category: product.category,
+    });
   };
 
   const showImageMode = () => setMediaMode("image");
@@ -392,7 +405,10 @@ export default function App() {
                   +
                 </button>
               </div>
-              <button className="h-12 border border-[#C6A75E] bg-[#C6A75E] px-8 text-[10px] uppercase tracking-widest text-white transition-colors hover:bg-transparent hover:text-[#C6A75E]">
+              <button
+                onClick={handleAddToCart}
+                className="h-12 border border-[#C6A75E] bg-[#C6A75E] px-8 text-[10px] uppercase tracking-widest text-white transition-colors hover:bg-transparent hover:text-[#C6A75E]"
+              >
                 Add to Cart
               </button>
 

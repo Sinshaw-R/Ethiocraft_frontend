@@ -405,6 +405,16 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[#FAFAF9] px-4 py-6 text-[#1C1C1C] md:px-10 md:py-10 font-inter">
       <main className="mx-auto flex min-h-[calc(100vh-3rem)] w-full max-w-4xl flex-col rounded-2xl border border-[#e9e3d8] bg-[#fdfcf9] p-6 md:p-10">
+        <div className="mb-4">
+          <a
+            href="/"
+            className="font-aeonik inline-flex items-center gap-2 text-xs uppercase tracking-[0.12em] text-[#7a746b] transition-colors hover:text-[#C6A75E]"
+          >
+            <span aria-hidden="true">←</span>
+            Back to Home
+          </a>
+        </div>
+
         {/* Progress header */}
         <header>
           <div className="flex items-center justify-between gap-4">

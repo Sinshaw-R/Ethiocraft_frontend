@@ -1,12 +1,21 @@
 
 "use client";
-import { FormEvent, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Header } from '@/components/shared/header';
 import { Footer } from '@/components/shared/footer';
 import { useAuth } from '@/lib/auth-context';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:4000/api/v1';
+const loginSchema = z.object({
+  email: z.string().email('Please enter a valid email address.'),
+  password: z.string().min(1, 'Password is required.'),
+});
+
+type LoginFormData = z.infer<typeof loginSchema>;
 
 /** Maps a server role string to its dashboard path. */
 function dashboardForRole(role: string): string {
@@ -23,29 +32,31 @@ export default function LoginPage() {
   const { login } = useAuth();
 
   const [isReady, setIsReady]           = useState(false);
-  const [email, setEmail]               = useState('');
-  const [password, setPassword]         = useState('');
   const [isLoading, setIsLoading]       = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: '',
+      password: '',
+    },
+  });
 
   useEffect(() => { setIsReady(true); }, []);
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const onSubmit = async (values: LoginFormData) => {
     setErrorMessage('');
-
-    if (!email.trim() || !password.trim()) {
-      setErrorMessage('Please enter both email and password.');
-      return;
-    }
-
     setIsLoading(true);
 
     try {
       const res = await fetch(`${BASE_URL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify(values),
       });
 
       const json = await res.json();
@@ -123,7 +134,7 @@ export default function LoginPage() {
             </h2>
             <p className="mt-3 text-sm text-[#5d564b]">Sign in to continue</p>
 
-            <form className="mt-10 space-y-6" onSubmit={handleSubmit}>
+            <form className="mt-10 space-y-6" onSubmit={handleSubmit(onSubmit)}>
               <label
                 className="block text-sm"
                 style={{
@@ -135,12 +146,11 @@ export default function LoginPage() {
                 <span className="mb-2 block text-[#6a645a]">Email</span>
                 <input
                   type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  {...register('email')}
                   className="w-full border-0 border-b border-[#ddd6c9] bg-transparent px-0 py-2 text-[15px] outline-none transition-colors duration-300 placeholder:text-[#b3ab9f] focus:border-[#C6A75E]"
                   placeholder="you@example.com"
                 />
+                {errors.email && <p className="mt-1 text-xs text-[#9e4a45]">{errors.email.message}</p>}
               </label>
 
               <div
@@ -161,12 +171,11 @@ export default function LoginPage() {
                 <input
                   id="password"
                   type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  {...register('password')}
                   className="w-full border-0 border-b border-[#ddd6c9] bg-transparent px-0 py-2 text-[15px] outline-none transition-colors duration-300 placeholder:text-[#b3ab9f] focus:border-[#C6A75E]"
                   placeholder="Enter your password"
                 />
+                {errors.password && <p className="mt-1 text-xs text-[#9e4a45]">{errors.password.message}</p>}
               </div>
 
               {errorMessage && (
@@ -204,7 +213,7 @@ export default function LoginPage() {
             <div className="mt-10 border-t border-[#e8e1d4] pt-6 text-sm text-[#6a645a]">
               Are you an artisan?{' '}
               <a
-                href="/auth/register/artisan"
+                href="/artisan/landing"
                 className="font-aeonik group inline-flex items-center gap-1 text-[#C6A75E] transition-colors hover:text-[#b1924e]"
               >
                 Start selling your craft

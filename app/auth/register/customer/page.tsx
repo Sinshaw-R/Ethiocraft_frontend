@@ -2,22 +2,41 @@
 import { cn } from '@/lib/utils';
 import { Header } from '@/components/shared/header';
 import { Footer } from '@/components/shared/footer';
-import { FormEvent, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+
+const registerSchema = z.object({
+  fullName: z.string().min(2, 'Full name is required'),
+  email: z.string().email('Please enter a valid email'),
+  password: z.string().min(8, 'Password must be at least 8 characters'),
+});
+
+type RegisterFormData = z.infer<typeof registerSchema>;
 
 export default function App() {
   const [isReady, setIsReady] = useState(false);
-  const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<RegisterFormData>({
+    resolver: zodResolver(registerSchema),
+    defaultValues: {
+      fullName: '',
+      email: '',
+      password: '',
+    },
+  });
 
   useEffect(() => {
     setIsReady(true);
   }, []); 
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const onSubmit = (values: RegisterFormData) => {
     // Placeholder action for demo usage.
-    console.log('Create account', { fullName, email, password });
+    console.log('Create account', values);
   };
 
   return (
@@ -64,41 +83,38 @@ export default function App() {
             </h2>
             <p className="mt-3 text-sm text-[#5d564b]">Start exploring handcrafted pieces</p>
 
-            <form className="mt-10 space-y-6" onSubmit={handleSubmit}>
+            <form className="mt-10 space-y-6" onSubmit={handleSubmit(onSubmit)}>
               <label className="block text-sm">
                 <span className="mb-2 block text-[#6a645a]">Full Name</span>
                 <input
                   type="text"
-                  required
-                  value={fullName}
-                  onChange={(event) => setFullName(event.target.value)}
+                  {...register('fullName')}
                   className="w-full border-0 border-b border-[#ddd6c9] bg-transparent px-0 py-2 text-[15px] outline-none transition-colors duration-300 placeholder:text-[#b3ab9f] focus:border-[#C6A75E]"
                   placeholder="Alemayehu Bekele"
                 />
+                {errors.fullName && <p className="mt-1 text-xs text-[#9e4a45]">{errors.fullName.message}</p>}
               </label>
 
               <label className="block text-sm">
                 <span className="mb-2 block text-[#6a645a]">Email</span>
                 <input
                   type="email"
-                  required
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
+                  {...register('email')}
                   className="w-full border-0 border-b border-[#ddd6c9] bg-transparent px-0 py-2 text-[15px] outline-none transition-colors duration-300 placeholder:text-[#b3ab9f] focus:border-[#C6A75E]"
                   placeholder="you@example.com"
                 />
+                {errors.email && <p className="mt-1 text-xs text-[#9e4a45]">{errors.email.message}</p>}
               </label>
 
               <label className="block text-sm">
                 <span className="mb-2 block text-[#6a645a]">Password</span>
                 <input
                   type="password"
-                  required
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
+                  {...register('password')}
                   className="w-full border-0 border-b border-[#ddd6c9] bg-transparent px-0 py-2 text-[15px] outline-none transition-colors duration-300 placeholder:text-[#b3ab9f] focus:border-[#C6A75E]"
                   placeholder="At least 8 characters"
                 />
+                {errors.password && <p className="mt-1 text-xs text-[#9e4a45]">{errors.password.message}</p>}
               </label>
 
               <button

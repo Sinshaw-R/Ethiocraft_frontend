@@ -24,6 +24,17 @@ type Review = {
   isVerified: boolean;
 };
 
+// --- Types ---
+
+type Review = {
+  id: string;
+  author: string;
+  rating: number;
+  date: string;
+  comment: string;
+  isVerified: boolean;
+};
+
 type DetailProduct = {
   id: number;
   name: string;

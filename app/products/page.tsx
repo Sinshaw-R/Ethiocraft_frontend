@@ -244,6 +244,7 @@ export default function productPage() {
     const { ids, added } = toggleWishlistProduct(wishlistUserKey, productId);
     setWishlistIds(ids);
     setWishlistMessage(added ? 'Added to wishlist' : 'Removed from wishlist');
+    toast.info(added ? 'Added to wishlist' : 'Removed from wishlist');
   };
 
 <<<<<<< HEAD

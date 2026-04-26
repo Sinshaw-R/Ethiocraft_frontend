@@ -118,9 +118,10 @@ export default function CustomerDashboard() {
     [wishlistIds],
   )
 
-  const handleRemoveWishlistItem = (productId: number) => {
+  const handleRemoveWishlistItem = (productId: number, productName: string) => {
     const { ids } = toggleWishlistProduct(wishlistUserKey, productId)
     setWishlistIds(ids)
+    toast.info(`${productName} removed from wishlist`)
   }
 <<<<<<< HEAD
 =======
@@ -284,30 +285,31 @@ export default function CustomerDashboard() {
                           <p className="text-lg font-bold text-secondary mt-2">${item.price}</p>
                           <div className="flex gap-2 mt-3">
 <<<<<<< HEAD
-                            <Button size="sm" className="flex-1 bg-primary">
+  <Button size="sm" className="flex-1 bg-primary">
 =======
                             <Button
-                              size="sm"
-                              className="flex-1 bg-primary"
-                              onClick={() => handleAddWishlistItemToCart(item)}
-                            >
+      size="sm"
+      className="flex-1 bg-primary"
+      onClick={() => handleAddWishlistItemToCart(item)}
+    >
 >>>>>>> 8c3985f42246b5b83eab36049412039f6e100bf4
-                              Add to Cart
-                            </Button>
-                            <Button size="sm" variant="outline" onClick={() => handleRemoveWishlistItem(item.id)}>
-                              Remove
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    </Card>
-                  ))}
-                </div>
+      Add to Cart
+    </Button>
+    <Button size="sm" variant="outline" onClick={() => handleRemoveWishlistItem(item.id, item.name)}>
+      Remove
+    </Button>
+  </div>
+                        </div >
+                      </div >
+                    </Card >
+                  ))
+}
+                </div >
               )}
-            </TabsContent>
+            </TabsContent >
 
-            {/* Account Tab */}
-            <TabsContent value="account" className="space-y-4">
+  {/* Account Tab */ }
+  < TabsContent value = "account" className = "space-y-4" >
               <h2 className="text-xl font-semibold mb-4">Account Settings</h2>
 
               <Card className="p-6 space-y-4">
@@ -343,10 +345,10 @@ export default function CustomerDashboard() {
                 </div>
                 <Button variant="outline">Manage Addresses</Button>
               </Card>
-            </TabsContent>
-          </Tabs>
-        </div>
-      </main>
+            </TabsContent >
+          </Tabs >
+        </div >
+      </main >
 
       <Footer />
       <style jsx>{`
@@ -354,6 +356,6 @@ export default function CustomerDashboard() {
         .font-aeonik { font-family: var(--font-aeonik), sans-serif; }
         .font-inter { font-family: var(--font-inter), sans-serif; }
       `}</style>
-    </div>
+    </div >
   )
 }

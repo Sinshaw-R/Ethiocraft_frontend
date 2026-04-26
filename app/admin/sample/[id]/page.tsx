@@ -627,8 +627,8 @@ export default function App() {
                 <button className="rounded-lg border border-neutral-200 px-3 py-1.5 transition hover:bg-neutral-50" onClick={() => navigate(`/admin/users/${sample.artisanId}`)}>View Artisan Profile</button>
                 <button className="rounded-lg border border-neutral-200 px-3 py-1.5 transition hover:bg-neutral-50" onClick={() => showToast('Message composer opened')}>Message Artisan</button>
                 <div className="relative">
-                  <button 
-                    className="rounded-lg border border-neutral-200 px-3 py-1.5 transition hover:bg-neutral-50" 
+                  <button
+                    className="rounded-lg border border-neutral-200 px-3 py-1.5 transition hover:bg-neutral-50"
                     onClick={() => {
                       if (artisanSamples.length === 0) showToast('No other samples found');
                       else setShowSamplesDropdown(!showSamplesDropdown);
@@ -640,13 +640,13 @@ export default function App() {
                     <div className="absolute top-full left-0 mt-2 w-56 z-50 rounded-xl border border-neutral-200 bg-white shadow-xl overflow-hidden">
                       <div className="max-h-48 overflow-y-auto">
                         {artisanSamples.map(s => (
-                          <button 
-                            key={s.id} 
-                            onClick={(e) => { 
-                              e.stopPropagation(); 
+                          <button
+                            key={s.id}
+                            onClick={(e) => {
+                              e.stopPropagation();
                               setShowSamplesDropdown(false);
-                              navigate(`/admin/sample/${s.id}`); 
-                            }} 
+                              navigate(`/admin/sample/${s.id}`);
+                            }}
                             className="block w-full text-left px-3 py-2 text-xs hover:bg-neutral-50 truncate border-b border-neutral-100 last:border-0 text-[#3E2723]"
                           >
                             {s.title || 'Untitled Sample'}

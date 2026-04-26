@@ -5,6 +5,9 @@ import { Header } from '@/components/shared/header';
 import { Footer } from '@/components/shared/footer';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
+import { useAuth } from '@/lib/auth-context';
+import { toggleWishlistProduct, getWishlistProductIds } from '@/lib/wishlist';
+import { Heart } from 'lucide-react';
 import Link from 'next/link';
 import ChatSupport from '@/components/ChatSupport';
 
@@ -17,7 +20,7 @@ type Product = {
   badge?: 'Handmade' | 'New';
   region?: string;
   material?: string;
-  rating: number; 
+  rating: number;
 };
 
 const products: Product[] = [
@@ -115,9 +118,13 @@ const materialsList = ['Clay', 'Cotton', 'Silver', 'Straw', 'Leather'];
 
 export default function productPage() {
   const searchParams = useSearchParams();
+  const { token } = useAuth();
+  const wishlistUserKey = token ?? 'guest';
   const [sortBy, setSortBy] = useState<'curated' | 'price-low' | 'price-high' | 'newest' | 'rating-high' | 'rating-low'>('curated');
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [visibleIds, setVisibleIds] = useState<number[]>([]);
+  const [wishlistIds, setWishlistIds] = useState<number[]>([]);
+  const [wishlistMessage, setWishlistMessage] = useState('');
 
   // Filter States
   const [activeCategory, setActiveCategory] = useState<(typeof categories)[number]>('All');
@@ -173,7 +180,7 @@ export default function productPage() {
         return 0;
       });
     }
-    
+
     return base; // 'curated' default
   }, [activeCategory, showHandmadeOnly, showNewOnly, sortBy, priceRange, selectedRegions, selectedMaterials]);
 
@@ -198,6 +205,16 @@ export default function productPage() {
     return () => observer.disconnect();
   }, [filteredProducts]);
 
+  useEffect(() => {
+    setWishlistIds(getWishlistProductIds(wishlistUserKey));
+  }, [wishlistUserKey]);
+
+  useEffect(() => {
+    if (!wishlistMessage) return;
+    const timeout = setTimeout(() => setWishlistMessage(''), 1800);
+    return () => clearTimeout(timeout);
+  }, [wishlistMessage]);
+
   const resetFilters = () => {
     setActiveCategory('All');
     setShowNewOnly(false);
@@ -209,6 +226,15 @@ export default function productPage() {
 
   const toggleArrayFilter = (item: string, state: string[], setState: (val: string[]) => void) => {
     setState(state.includes(item) ? state.filter((i) => i !== item) : [...state, item]);
+  };
+
+  const handleWishlistToggle = (event: React.MouseEvent<HTMLButtonElement>, productId: number) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const { ids, added } = toggleWishlistProduct(wishlistUserKey, productId);
+    setWishlistIds(ids);
+    setWishlistMessage(added ? 'Added to wishlist' : 'Removed from wishlist');
   };
 
   const hasActiveFilters = activeCategory !== 'All' || showNewOnly || showHandmadeOnly || selectedRegions.length > 0 || selectedMaterials.length > 0 || priceRange[0] > 0 || priceRange[1] < 500;
@@ -255,6 +281,11 @@ export default function productPage() {
             </button>
           </div>
         </section>
+        {wishlistMessage && (
+          <p className="mb-5 border border-[#ddd8cf] bg-[#f8f6f1] px-4 py-2 text-xs uppercase tracking-wider text-[#5f5b55]">
+            {wishlistMessage}
+          </p>
+        )}
 
         {filteredProducts.length === 0 ? (
           <section className="py-20 text-center">
@@ -284,6 +315,19 @@ export default function productPage() {
                 >
                   <Link href={`/products/${product.id}`} className="group block">
                     <div className="relative overflow-hidden bg-[#f1eee8]">
+                      <button
+                        type="button"
+                        aria-label={wishlistIds.includes(product.id) ? 'Remove from wishlist' : 'Add to wishlist'}
+                        onClick={(event) => handleWishlistToggle(event, product.id)}
+                        className="absolute right-3 top-3 z-20 flex h-9 w-9 items-center justify-center transition-colors"
+                      >
+                        <Heart
+                          className={`h-5 w-5 transition-colors ${wishlistIds.includes(product.id)
+                            ? 'fill-[#C6A75E] text-[#C6A75E]'
+                            : 'text-[#cfc3b8] hover:text-[#C6A75E]'
+                            }`}
+                        />
+                      </button>
                       {product.badge && (
                         <span
                           className="absolute left-3 top-3 z-10 border border-[#d8c28a] bg-[#fafaf9cc] px-2 py-1 text-[10px] uppercase tracking-[0.1em]"
@@ -315,7 +359,7 @@ export default function productPage() {
                         <span style={{ fontFamily: 'Inter, sans-serif' }}>{product.rating.toFixed(1)}</span>
                       </div>
                     </div>
-                    
+
                     <Link href={`/products/${product.id}`}>
                       <h3
                         className="mt-2 text-sm uppercase tracking-[0.05em] transition-colors duration-300 hover:text-[#C6A75E] md:text-base"
@@ -324,7 +368,7 @@ export default function productPage() {
                         {product.name}
                       </h3>
                     </Link>
-                    
+
                     <div className="mt-4 flex items-center justify-between border-t border-[#e8e5df] pt-4">
                       <p className="text-sm font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>
                         ${product.price}
@@ -373,11 +417,10 @@ export default function productPage() {
                 <button
                   key={category}
                   onClick={() => setActiveCategory(category)}
-                  className={`block w-full border px-3 py-2 text-left text-sm transition-colors ${
-                    activeCategory === category
-                      ? 'border-[#C6A75E] text-[#C6A75E]'
-                      : 'border-[#ddd8cf] hover:border-[#C6A75E]'
-                  }`}
+                  className={`block w-full border px-3 py-2 text-left text-sm transition-colors ${activeCategory === category
+                    ? 'border-[#C6A75E] text-[#C6A75E]'
+                    : 'border-[#ddd8cf] hover:border-[#C6A75E]'
+                    }`}
                 >
                   {category}
                 </button>

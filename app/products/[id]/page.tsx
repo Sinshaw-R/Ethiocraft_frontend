@@ -3,6 +3,9 @@ import { Header } from "@/components/shared/header";
 import { Footer } from "@/components/shared/footer";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/lib/auth-context";
+import { getWishlistProductIds, toggleWishlistProduct } from "@/lib/wishlist";
+import { Heart } from "lucide-react";
 import React from "react";
 import { createElement, useEffect, useState } from "react";
 import Link from "next/link";
@@ -120,6 +123,8 @@ const initialReviews: Review[] = [
 ];
 
 export default function App() {
+  const { token } = useAuth();
+  const wishlistUserKey = token ?? "guest";
   // UI States
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
@@ -127,6 +132,7 @@ export default function App() {
   const [is3DActivated, setIs3DActivated] = useState(false);
   const [isModelViewerReady, setIsModelViewerReady] = useState(false);
   const [isWishlisted, setIsWishlisted] = useState(false);
+  const [wishlistMessage, setWishlistMessage] = useState("");
   const [loaded, setLoaded] = useState(false);
   const [revealedSections, setRevealedSections] = useState<string[]>([]);
 
@@ -145,6 +151,16 @@ export default function App() {
   useEffect(() => {
     setLoaded(true);
   }, []);
+
+  useEffect(() => {
+    setIsWishlisted(getWishlistProductIds(wishlistUserKey).includes(product.id));
+  }, [wishlistUserKey]);
+
+  useEffect(() => {
+    if (!wishlistMessage) return;
+    const timeout = setTimeout(() => setWishlistMessage(""), 1800);
+    return () => clearTimeout(timeout);
+  }, [wishlistMessage]);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -215,6 +231,12 @@ export default function App() {
     } else {
       alert("Sharing is not supported on this browser.");
     }
+  };
+
+  const handleWishlistToggle = () => {
+    const { added } = toggleWishlistProduct(wishlistUserKey, product.id);
+    setIsWishlisted(added);
+    setWishlistMessage(added ? "Added to wishlist" : "Removed from wishlist");
   };
 
   const showImageMode = () => setMediaMode("image");
@@ -349,6 +371,11 @@ export default function App() {
             <p className="mt-5 max-w-[44ch] text-[15px] leading-relaxed text-[#4f4b45]">
               {product.shortDescription}
             </p>
+            {wishlistMessage && (
+              <p className="font-aeonik mt-4 inline-flex border border-[#ddd8cf] bg-[#f8f6f1] px-3 py-2 text-[10px] uppercase tracking-[0.12em] text-[#5f5b55]">
+                {wishlistMessage}
+              </p>
+            )}
             <div className="font-aeonik mt-9 flex items-center gap-6">
               <div className="inline-flex items-center border-b border-[#d8d2c8] pb-2 text-sm">
                 <button
@@ -368,13 +395,16 @@ export default function App() {
               <button className="h-12 border border-[#C6A75E] bg-[#C6A75E] px-8 text-[10px] uppercase tracking-widest text-white transition-colors hover:bg-transparent hover:text-[#C6A75E]">
                 Add to Cart
               </button>
-              
+
               {/* WISHLIST BUTTON */}
               <button
-                className="text-xl text-[#4f4b45] hover:text-[#C6A75E]"
-                onClick={() => setIsWishlisted((prev) => !prev)}
+                className="transition-colors"
+                onClick={handleWishlistToggle}
+                aria-label={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
               >
-                {isWishlisted ? "♥" : "♡"}
+                <Heart
+                  className={`h-6 w-6 ${isWishlisted ? "fill-[#C6A75E] text-[#C6A75E]" : "text-[#4f4b45] hover:text-[#C6A75E]"}`}
+                />
               </button>
 
               {/* SHARE BUTTON (ADDED AS REQUESTED) */}
@@ -399,7 +429,7 @@ export default function App() {
                   <line x1="12" y1="2" x2="12" y2="15" />
                 </svg>
               </button>
-              
+
             </div>
             <div className="font-aeonik mt-10 flex flex-wrap gap-x-7 gap-y-3 text-[10px] uppercase tracking-widest text-[#4f4b45]">
               <p>Free Shipping</p>

@@ -6,7 +6,7 @@ import './globals.css'
 import { HeaderProvider } from '@/lib/header-context'
 import { AuthProvider } from '@/lib/auth-context'
 
-const inter = Inter({ 
+const inter = Inter({
   subsets: ['latin'],
   variable: '--font-inter'
 })
@@ -18,7 +18,7 @@ const aeonik = localFont({
       weight: '400',
       style: 'normal',
     },
-    
+
     {
       path: '../public/fonts/Aeonik Font/New Aeonik Trials/AeonikTRIAL-Bold.otf',
       weight: '700',

@@ -24,17 +24,6 @@ type Review = {
   isVerified: boolean;
 };
 
-// --- Types ---
-
-type Review = {
-  id: string;
-  author: string;
-  rating: number;
-  date: string;
-  comment: string;
-  isVerified: boolean;
-};
-
 type DetailProduct = {
   id: number;
   name: string;
@@ -265,7 +254,6 @@ export default function App() {
     });
     toast.success(`${product.name} added to cart`);
   };
-
   const showImageMode = () => setMediaMode("image");
   const show3DMode = () => {
     setMediaMode("3d");

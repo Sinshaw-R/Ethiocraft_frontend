@@ -134,22 +134,16 @@ export function Header() {
     if (openTimerRef.current) window.clearTimeout(openTimerRef.current)
     if (focusTimerRef.current) window.clearTimeout(focusTimerRef.current)
     closeTweenRef.current?.kill()
+    if (isMountedRef.current) setIsSearchOpen(false)
 
     const target = searchBarRef.current
-    if (!target) {
-      if (isMountedRef.current) setIsSearchOpen(false)
-      return
-    }
+    if (!target) return
 
     gsap.killTweensOf(target)
     closeTweenRef.current = gsap.to(target, {
       y: '-100%',
       duration: 0.5,
       ease: 'power2.out',
-      onComplete: () => {
-        if (!isMountedRef.current) return
-        setIsSearchOpen(false)
-      }
     })
   }
 
@@ -360,6 +354,7 @@ export function Header() {
                   />
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Button
+                    type="button"
                     variant="ghost"
                     size="icon"
                     className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-[#1C1C1C]"

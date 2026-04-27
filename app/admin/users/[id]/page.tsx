@@ -19,7 +19,7 @@ import {
 import { cn } from "@/lib/utils";
 
 type Role = "customer" | "artisan" | "agent" | "admin";
-type Status = "active" | "suspended" | "banned";
+type Status = "active" | "suspended";
 type TabKey = "activity" | "orders" | "notes";
 
 type Note = {
@@ -46,20 +46,18 @@ const ROLE_LABEL: Record<Role, string> = {
 const ROLE_UPPER: Record<Role, string> = {
     customer: "CUSTOMER",
     artisan: "ARTISAN",
-    agent: "AGENT",
+    agent: "VERIFICATION_AGENT",
     admin: "ADMIN",
 };
 
 const STATUS_LABEL: Record<Status, string> = {
     active: "Active",
     suspended: "Suspended",
-    banned: "Banned",
 };
 
 const STATUS_UPPER: Record<Status, string> = {
     active: "ACTIVE",
     suspended: "SUSPENDED",
-    banned: "BANNED",
 };
 
 const BASE_ACTIVITY: ActivityLog[] = [
@@ -106,8 +104,7 @@ const tabs: { key: TabKey; label: string }[] = [
 
 function statusStyles(status: Status) {
     if (status === "active") return "bg-emerald-50 text-emerald-700 border-emerald-200";
-    if (status === "suspended") return "bg-amber-50 text-amber-700 border-amber-200";
-    return "bg-rose-50 text-rose-700 border-rose-200";
+    return "bg-amber-50 text-amber-700 border-amber-200";
 }
 
 function roleStyles(role: Role) {
@@ -252,20 +249,57 @@ export default function UserDetailPage() {
         setAdminLogs((prev) => [{ id: Date.now(), label, date: stamp, tone }, ...prev]);
     };
 
-    const handleStatusChange = (next: Status) => {
-        setStatus(next);
-        pushLog(
-            `Admin changed status to ${STATUS_LABEL[next]}.`,
-            next === "banned" ? "danger" : next === "suspended" ? "warning" : "success"
-        );
-        showToast(`Status set to ${STATUS_UPPER[next]}`);
+    const handleStatusChange = async (next: Status) => {
+        try {
+            const base = (process.env.NEXT_PUBLIC_BASE_URL ?? "").replace(/\/$/, "") || "http://localhost:4000/api/v1";
+            const token = localStorage.getItem("token");
+            const res = await fetch(`${base}/admin/users/${id}`, {
+                method: "PATCH",
+                headers: { 
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}` 
+                },
+                body: JSON.stringify({ status: STATUS_UPPER[next] })
+            });
+
+            if (!res.ok) throw new Error("Failed to update status");
+            
+            setStatus(next);
+            pushLog(
+                `Admin changed status to ${STATUS_LABEL[next]}.`,
+                next === "suspended" ? "warning" : "success"
+            );
+            showToast(`Status set to ${STATUS_UPPER[next]}`);
+        } catch (error) {
+            console.error(error);
+            showToast("Failed to update status");
+        }
     };
 
-    const handleRoleUpdate = () => {
-        setRole(draftRole);
-        setShowRoleConfirm(false);
-        pushLog(`Admin changed role to ${ROLE_LABEL[draftRole]}.`, "warning");
-        showToast(`Role updated to ${ROLE_UPPER[draftRole]}`);
+    const handleRoleUpdate = async () => {
+        try {
+            const base = (process.env.NEXT_PUBLIC_BASE_URL ?? "").replace(/\/$/, "") || "http://localhost:4000/api/v1";
+            const token = localStorage.getItem("token");
+            const res = await fetch(`${base}/admin/users/${id}`, {
+                method: "PATCH",
+                headers: { 
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}` 
+                },
+                body: JSON.stringify({ role: ROLE_UPPER[draftRole] })
+            });
+
+            if (!res.ok) throw new Error("Failed to update role");
+
+            setRole(draftRole);
+            setShowRoleConfirm(false);
+            pushLog(`Admin changed role to ${ROLE_LABEL[draftRole]}.`, "warning");
+            showToast(`Role updated to ${ROLE_UPPER[draftRole]}`);
+        } catch (error) {
+            console.error(error);
+            showToast("Failed to update role");
+            setShowRoleConfirm(false);
+        }
     };
 
     const handleAddNote = (event: FormEvent) => {
@@ -399,12 +433,6 @@ export default function UserDetailPage() {
                                 className="inline-flex items-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-700 transition duration-300 hover:-translate-y-1 hover:shadow-md"
                             >
                                 <Lock className="h-3.5 w-3.5" /> Suspend
-                            </button>
-                            <button
-                                onClick={() => handleStatusChange("banned")}
-                                className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-xs text-rose-700 transition duration-300 hover:-translate-y-1 hover:shadow-md"
-                            >
-                                <Ban className="h-3.5 w-3.5" /> Ban User
                             </button>
                             <button
                                 onClick={() => handleStatusChange("active")}
@@ -865,7 +893,6 @@ export default function UserDetailPage() {
                                     {[
                                         { s: "active", i: UserCheck, c: "text-emerald-700 bg-emerald-50 border-emerald-100" },
                                         { s: "suspended", i: Lock, c: "text-amber-700 bg-amber-50 border-amber-100" },
-                                        { s: "banned", i: Ban, c: "text-rose-700 bg-rose-50 border-rose-100" },
                                     ].map((item) => {
                                         const Icon = item.i;
                                         const isActive = status === item.s;

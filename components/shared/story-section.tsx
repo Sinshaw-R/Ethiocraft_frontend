@@ -14,21 +14,41 @@ export function StorySection() {
   const sectionRef = useRef<HTMLElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const panelsRef = useRef<(HTMLDivElement | null)[]>([])
+  const setPanelRef = (index: number) => (el: HTMLDivElement | null): void => {
+    panelsRef.current[index] = el
+  }
 
   useEffect(() => {
     const ctx = gsap.context(() => {
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        return
+      }
+
+      const section = sectionRef.current
+      const container = containerRef.current
       const panels = panelsRef.current
-      const totalPanels = panels.length
+      const panel1 = panels[0]
+      const panel2 = panels[1]
+      const panel3 = panels[2]
+      const panel5 = panels[4]
+
+      if (!section || !container || !panel1 || !panel2 || !panel3 || !panel5) {
+        return
+      }
 
       // Main horizontal scroll animation
-      const scrollTween = gsap.to(containerRef.current, {
-        x: () => -(containerRef.current!.scrollWidth - window.innerWidth),
+      const scrollTween = gsap.to(container, {
+        x: () => {
+          return -(container.scrollWidth - window.innerWidth)
+        },
         ease: 'none',
         scrollTrigger: {
-          trigger: sectionRef.current,
+          trigger: section,
           pin: true,
           scrub: 1,
-          end: () => `+=${containerRef.current!.scrollWidth - window.innerWidth}`,
+          end: () => {
+            return `+=${container.scrollWidth - window.innerWidth}`
+          },
         },
       })
 
@@ -36,7 +56,7 @@ export function StorySection() {
       gsap.to('.panel-1-bg', {
         scale: 1.1,
         scrollTrigger: {
-          trigger: panels[0],
+          trigger: panel1,
           containerAnimation: scrollTween,
           start: 'left left',
           end: 'right left',
@@ -50,7 +70,7 @@ export function StorySection() {
         duration: 1.5,
         ease: 'power2.out',
         scrollTrigger: {
-          trigger: panels[1],
+          trigger: panel2,
           containerAnimation: scrollTween,
           start: 'left center',
         },
@@ -61,7 +81,7 @@ export function StorySection() {
         opacity: 0,
         stagger: 0.2,
         scrollTrigger: {
-          trigger: panels[1],
+          trigger: panel2,
           containerAnimation: scrollTween,
           start: 'left center',
         },
@@ -70,7 +90,7 @@ export function StorySection() {
       // Panel 3: Meet the Makers animation sequence
       const tl3 = gsap.timeline({
         scrollTrigger: {
-          trigger: panels[2],
+          trigger: panel3,
           containerAnimation: scrollTween,
           start: 'left center',
         },
@@ -104,8 +124,16 @@ export function StorySection() {
       }, '-=0.6')
 
       // Panel 5: Split reveal
-      gsap.from('.split-left', { xPercent: -50, opacity: 0, scrollTrigger: { trigger: panels[4], containerAnimation: scrollTween, start: 'left center' } })
-      gsap.from('.split-right', { xPercent: 50, opacity: 0, scrollTrigger: { trigger: panels[4], containerAnimation: scrollTween, start: 'left center' } })
+      gsap.from('.split-left', {
+        xPercent: -50,
+        opacity: 0,
+        scrollTrigger: { trigger: panel5, containerAnimation: scrollTween, start: 'left center' },
+      })
+      gsap.from('.split-right', {
+        xPercent: 50,
+        opacity: 0,
+        scrollTrigger: { trigger: panel5, containerAnimation: scrollTween, start: 'left center' },
+      })
 
     }, sectionRef)
 
@@ -121,7 +149,7 @@ export function StorySection() {
       >
         {/* Panel 1 — Opening (Heritage) */}
         <div 
-          ref={(el) => (panelsRef.current[0] = el)}
+          ref={setPanelRef(0)}
           className="relative w-screen h-full flex items-center justify-center overflow-hidden"
         >
           <div 
@@ -138,7 +166,7 @@ export function StorySection() {
 
         {/* Panel 2 — Craft Process */}
         <div 
-          ref={(el) => (panelsRef.current[1] = el)}
+          ref={setPanelRef(1)}
           className="w-screen h-full flex items-center px-8 md:px-24 bg-white"
         >
           <div className="grid grid-cols-1 md:grid-cols-2 gap-16 items-center w-full">
@@ -162,7 +190,7 @@ export function StorySection() {
 
         {/* Panel 3 — Artisan Story */}
        <div 
-         ref={(el) => (panelsRef.current[2] = el)}
+         ref={setPanelRef(2)}
          className="w-screen h-full flex flex-col justify-center px-12 bg-[#FAFAF9]"
        >
 
@@ -202,7 +230,13 @@ export function StorySection() {
         <div key={role} className="secondary-artisan flex items-center gap-6">
 
           <div className="w-20 h-20 bg-muted overflow-hidden">
-            <img src={`/placeholder.svg?text=${role}`} />
+            <Image
+              src={`/placeholder.svg?text=${role}`}
+              alt={`${role} portrait`}
+              width={80}
+              height={80}
+              className="h-full w-full object-cover"
+            />
           </div>
 
           <div>
@@ -224,7 +258,7 @@ export function StorySection() {
 
         {/* Panel 4 — Culture */}
         <div 
-          ref={(el) => (panelsRef.current[3] = el)}
+          ref={setPanelRef(3)}
           className="relative w-screen h-full flex items-center justify-center overflow-hidden"
         >
           <div 
@@ -241,7 +275,7 @@ export function StorySection() {
 
         {/* Panel 5 — Modern Bridge */}
         <div 
-          ref={(el) => (panelsRef.current[4] = el)}
+          ref={setPanelRef(4)}
           className="w-screen h-full flex items-center bg-white overflow-hidden"
         >
           <div className="grid grid-cols-1 md:grid-cols-2 h-full w-full">
@@ -276,7 +310,7 @@ export function StorySection() {
 
         {/* Panel 6 — CTA (Final) */}
         <div 
-          ref={(el) => (panelsRef.current[5] = el)}
+          ref={setPanelRef(5)}
           className="w-screen h-full flex flex-col items-center justify-center bg-[#1C1C1C] text-white space-y-12"
          >
           <div className="space-y-4 text-center">

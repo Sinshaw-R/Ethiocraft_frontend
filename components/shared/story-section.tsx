@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useLayoutEffect, useRef } from 'react'
 import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { ArrowRight } from 'lucide-react'
@@ -18,7 +18,7 @@ export function StorySection() {
     panelsRef.current[index] = el
   }
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const ctx = gsap.context(() => {
       if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
         return
@@ -35,6 +35,7 @@ export function StorySection() {
       if (!section || !container || !panel1 || !panel2 || !panel3 || !panel5) {
         return
       }
+      const q = gsap.utils.selector(section)
 
       // Main horizontal scroll animation
       const scrollTween = gsap.to(container, {
@@ -46,6 +47,8 @@ export function StorySection() {
           trigger: section,
           pin: true,
           scrub: 1,
+          anticipatePin: 1,
+          invalidateOnRefresh: true,
           end: () => {
             return `+=${container.scrollWidth - window.innerWidth}`
           },
@@ -53,7 +56,7 @@ export function StorySection() {
       })
 
       // Panel 1: Parallax background
-      gsap.to('.panel-1-bg', {
+      gsap.to(q('.panel-1-bg'), {
         scale: 1.1,
         scrollTrigger: {
           trigger: panel1,
@@ -65,7 +68,7 @@ export function StorySection() {
       })
 
       // Panel 2: Image reveal and text stagger
-      gsap.from('.panel-2-img', {
+      gsap.from(q('.panel-2-img'), {
         clipPath: 'inset(0% 100% 0% 0%)',
         duration: 1.5,
         ease: 'power2.out',
@@ -76,7 +79,7 @@ export function StorySection() {
         },
       })
 
-      gsap.from('.panel-2-text > *', {
+      gsap.from(q('.panel-2-text > *'), {
         y: 50,
         opacity: 0,
         stagger: 0.2,
@@ -96,26 +99,26 @@ export function StorySection() {
         },
       })
 
-      tl3.from('.panel-3-title', {
+      tl3.from(q('.panel-3-title'), {
         y: 30,
         opacity: 0,
         duration: 0.8,
         ease: 'power2.out',
       })
-      .from('.panel-3-main-img', {
+      .from(q('.panel-3-main-img'), {
         scale: 0.9,
         opacity: 0,
         duration: 1,
         ease: 'power2.out',
       }, '-=0.4')
-      .from('.panel-3-main-text > *', {
+      .from(q('.panel-3-main-text > *'), {
         y: 30,
         opacity: 0,
         stagger: 0.2,
         duration: 0.8,
         ease: 'power2.out',
       }, '-=0.6')
-      .from('.secondary-artisan', {
+      .from(q('.secondary-artisan'), {
         y: 20,
         opacity: 0,
         stagger: 0.2,
@@ -124,12 +127,12 @@ export function StorySection() {
       }, '-=0.6')
 
       // Panel 5: Split reveal
-      gsap.from('.split-left', {
+      gsap.from(q('.split-left'), {
         xPercent: -50,
         opacity: 0,
         scrollTrigger: { trigger: panel5, containerAnimation: scrollTween, start: 'left center' },
       })
-      gsap.from('.split-right', {
+      gsap.from(q('.split-right'), {
         xPercent: 50,
         opacity: 0,
         scrollTrigger: { trigger: panel5, containerAnimation: scrollTween, start: 'left center' },
@@ -137,7 +140,20 @@ export function StorySection() {
 
     }, sectionRef)
 
-    return () => ctx.revert()
+    return () => {
+      const section = sectionRef.current
+      ScrollTrigger.getAll().forEach((trigger) => {
+        const triggerElement = trigger.vars.trigger
+        if (
+          section &&
+          triggerElement instanceof Element &&
+          (triggerElement === section || section.contains(triggerElement))
+        ) {
+          trigger.kill(true)
+        }
+      })
+      ctx.revert()
+    }
   }, [])
 
   return (

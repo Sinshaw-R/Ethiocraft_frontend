@@ -99,7 +99,7 @@ export function Header() {
 
       gsap.to(headerRef.current, {
         backgroundColor: bgColor,
-        borderBottom: `1px solid ${borderColor}`,
+        borderBottom: `0px solid ${borderColor}`,
         duration: 0.3,
         ease: 'power2.inOut'
       })

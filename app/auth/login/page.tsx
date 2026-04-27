@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Header } from '@/components/shared/header';
 import { Footer } from '@/components/shared/footer';
@@ -32,7 +32,6 @@ export default function LoginPage() {
   const router = useRouter();
   const { login } = useAuth();
 
-  const [isReady, setIsReady] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -48,8 +47,6 @@ export default function LoginPage() {
       password: '',
     },
   });
-
-  useEffect(() => { setIsReady(true); }, []);
 
   const onSubmit = async (values: LoginFormData) => {
     setErrorMessage('');
@@ -113,11 +110,7 @@ export default function LoginPage() {
         {/* Main Card Container */}
         <div 
           className="w-full max-w-[1300px] min-h-[650px] bg-gradient-to-br from-[#f8f9fa] to-[#fbf1d8] rounded-[2.5rem] shadow-2xl flex flex-col md:flex-row overflow-hidden relative"
-          style={{
-            opacity: isReady ? 1 : 0,
-            transform: isReady ? 'translateY(0)' : 'translateY(20px)',
-            transition: 'opacity 600ms ease, transform 600ms ease',
-          }}
+          style={{ transition: 'opacity 250ms ease, transform 250ms ease' }}
         >
           {/* Left Column - Form */}
           <section className="w-full md:w-1/2 p-8 md:p-14 flex flex-col justify-between relative z-10">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Header } from '@/components/shared/header';
 import { Footer } from '@/components/shared/footer';
 import { useForm } from 'react-hook-form';
@@ -20,7 +20,6 @@ const registerSchema = z.object({
 type RegisterFormData = z.infer<typeof registerSchema>;
 
 export default function RegisterPage() {
-  const [isReady, setIsReady] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -37,10 +36,6 @@ export default function RegisterPage() {
       confirmPassword: '',
     },
   });
-
-  useEffect(() => {
-    setIsReady(true);
-  }, []);
 
   const onSubmit = (values: RegisterFormData) => {
     console.log('Account creation successful:', values);
@@ -65,11 +60,7 @@ export default function RegisterPage() {
         <main className="flex-grow flex items-center justify-center p-4 md:p-8 pt-24 md:pt-28">
           <div
             className="w-full max-w-[1400px] min-h-[650px] bg-white/70 backdrop-blur-md rounded-[2.5rem] shadow-2xl flex flex-col md:flex-row overflow-hidden relative border border-white/50"
-            style={{
-              opacity: isReady ? 1 : 0,
-              transform: isReady ? 'translateY(0)' : 'translateY(20px)',
-              transition: 'opacity 600ms ease, transform 600ms ease',
-            }}
+            style={{ transition: 'opacity 250ms ease, transform 250ms ease' }}
           >
             {/* Left Column - Form */}
             <section className="w-full md:w-1/2 p-8 md:p-14 flex flex-col justify-between relative z-10">

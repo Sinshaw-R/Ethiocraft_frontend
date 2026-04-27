@@ -10,17 +10,17 @@ import {
     CreditCard,
     History,
     Lock,
+    Loader2,
     Pencil,
     ShieldAlert,
     ShoppingBag,
-    Upload,
     UserCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Role = "customer" | "artisan" | "agent" | "admin";
 type Status = "active" | "suspended" | "banned";
-type TabKey = "activity" | "orders" | "submissions" | "notes";
+type TabKey = "activity" | "orders" | "notes";
 
 type Note = {
     id: number;
@@ -70,17 +70,17 @@ const BASE_ACTIVITY: ActivityLog[] = [
     { id: 5, label: "Admin Hana suspended this user", date: "2026-04-10 18:09", tone: "danger" },
 ];
 
-const ORDER_ROWS = [
-    { id: "ETH-9021", status: "Delivered", amount: "ETB 4,200", date: "2026-04-20" },
-    { id: "ETH-8977", status: "In Transit", amount: "ETB 2,750", date: "2026-04-16" },
-    { id: "ETH-8831", status: "Cancelled", amount: "ETB 1,950", date: "2026-04-09" },
-];
-
-const SUBMISSION_ROWS = [
-    { id: "S-113", title: "Handwoven Gabi Set", status: "Pending", date: "2026-04-19" },
-    { id: "S-104", title: "Clay Coffee Pot", status: "Approved", date: "2026-04-15" },
-    { id: "S-099", title: "Leather Shoulder Bag", status: "Rejected", date: "2026-04-02" },
-];
+function orderStatusStyles(status: string) {
+    switch (status) {
+        case "DELIVERED": return "border-emerald-100 bg-emerald-50 text-emerald-700";
+        case "PAID": return "border-blue-100 bg-blue-50 text-blue-700";
+        case "PROCESSING": return "border-indigo-100 bg-indigo-50 text-indigo-700";
+        case "SHIPPED": return "border-violet-100 bg-violet-50 text-violet-700";
+        case "CANCELLED": return "border-rose-100 bg-rose-50 text-rose-700";
+        case "PENDING_PAYMENT": return "border-amber-100 bg-amber-50 text-amber-700";
+        default: return "border-neutral-100 bg-neutral-50 text-neutral-600";
+    }
+}
 
 const riskMessagesByRole: Record<Role, string[]> = {
     customer: [
@@ -101,7 +101,6 @@ const riskMessagesByRole: Record<Role, string[]> = {
 const tabs: { key: TabKey; label: string }[] = [
     { key: "activity", label: "Activity" },
     { key: "orders", label: "Orders" },
-    { key: "submissions", label: "Submissions" },
     { key: "notes", label: "Notes" },
 ];
 
@@ -134,6 +133,10 @@ export default function UserDetailPage() {
     const [toast, setToast] = useState("");
     const [userData, setUserData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
+    const [orders, setOrders] = useState<any[]>([]);
+    const [ordersMeta, setOrdersMeta] = useState<any>(null);
+    const [ordersLoading, setOrdersLoading] = useState(false);
+    const [ordersPage, setOrdersPage] = useState(1);
 
     const [notes, setNotes] = useState<Note[]>([
         {
@@ -150,6 +153,31 @@ export default function UserDetailPage() {
         },
     ]);
     const [adminLogs, setAdminLogs] = useState<ActivityLog[]>([]);
+
+    // Fetch orders when Orders tab becomes active
+    useEffect(() => {
+        if (activeTab !== "orders" || !id) return;
+        const fetchOrders = async () => {
+            setOrdersLoading(true);
+            try {
+                const base = (process.env.NEXT_PUBLIC_BASE_URL ?? "").replace(/\/$/, "") || "http://localhost:4000/api/v1";
+                const token = localStorage.getItem("token");
+                const res = await fetch(`${base}/admin/orders?userId=${id}&page=${ordersPage}&limit=10`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                });
+                if (!res.ok) throw new Error(`Error: ${res.status}`);
+                const json = await res.json();
+                setOrders(json.data?.items ?? []);
+                setOrdersMeta(json.data?.meta ?? null);
+            } catch (err) {
+                console.error("Failed to fetch orders:", err);
+                showToast("Failed to load orders");
+            } finally {
+                setOrdersLoading(false);
+            }
+        };
+        fetchOrders();
+    }, [activeTab, id, ordersPage]);
 
     useEffect(() => {
         const fetchUser = async () => {
@@ -271,10 +299,38 @@ export default function UserDetailPage() {
     };
 
     const insightItems = [
-        { label: "Activity Pts", value: "1.2K", icon: History },
-        { label: "Orders", value: role === "agent" ? "12" : "38", icon: ShoppingBag },
-        { label: "Samples", value: role === "artisan" ? "27" : "0", icon: Upload },
-        { label: role === "artisan" ? "Rev ETB" : "Spend ETB", value: role === "artisan" ? "182.5K" : "74.8K", icon: CreditCard },
+        {
+            label: "Joined",
+            value: userData?.createdAt ? new Date(userData.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "2-digit" }) : "—",
+            icon: History,
+        },
+        {
+            label: role === "agent" ? "Assignments" : "Orders",
+            value: role === "customer"
+                ? String(userData?.customerSummary?.totalOrders ?? "—")
+                : role === "artisan"
+                    ? String(userData?.artisanProfile ? "—" : "—")
+                    : "—",
+            icon: ShoppingBag,
+        },
+        {
+            label: role === "artisan" ? "Verification" : "Status",
+            value: role === "artisan"
+                ? (userData?.artisanProfile?.verificationStatus ?? "—")
+                : (userData?.status ?? status.toUpperCase()),
+            icon: ShieldAlert,
+        },
+        {
+            label: role === "artisan" ? "Rev ETB" : role === "customer" ? "Spent ETB" : "Region",
+            value: role === "customer"
+                ? userData?.customerSummary?.totalSpent != null
+                    ? Number(userData.customerSummary.totalSpent).toLocaleString()
+                    : "—"
+                : role === "artisan"
+                    ? (userData?.artisanProfile?.region ?? "—")
+                    : "—",
+            icon: CreditCard,
+        },
     ];
 
     if (loading) {
@@ -368,15 +424,15 @@ export default function UserDetailPage() {
                                 <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-3">
                                     <div className="rounded-xl border border-neutral-100 bg-neutral-50/30 p-4">
                                         <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">Total Orders</p>
-                                        <p className="mt-1 text-2xl font-bold">38</p>
+                                        <p className="mt-1 text-2xl font-bold">{userData?.customerSummary?.totalOrders || 0}</p>
                                     </div>
                                     <div className="rounded-xl border border-neutral-100 bg-neutral-50/30 p-4">
                                         <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">Total Spent</p>
-                                        <p className="mt-1 text-2xl font-bold text-[#C6A75E]">74,800 ETB</p>
+                                        <p className="mt-1 text-2xl font-bold text-[#C6A75E]">{(userData?.customerSummary?.totalSpent || 0).toLocaleString()} ETB</p>
                                     </div>
                                     <div className="rounded-xl border border-neutral-100 bg-neutral-50/30 p-4">
                                         <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">Last Order</p>
-                                        <p className="mt-2 text-sm font-bold">2026-04-20</p>
+                                        <p className="mt-2 text-sm font-bold">{userData?.customerSummary?.lastOrderDate ? new Date(userData?.customerSummary?.lastOrderDate).toISOString().split('T')[0] : "N/A"}</p>
                                     </div>
                                 </div>
                                 <div className="mt-6 flex flex-wrap gap-3 text-[11px] font-bold uppercase tracking-wider">
@@ -446,7 +502,7 @@ export default function UserDetailPage() {
                                             <button
                                                 onClick={() => {
                                                     pushLog("Admin opened verification pipeline view.");
-                                                    showToast("Verification pipeline opened");
+                                                    router.push('/admin/sample');
                                                 }}
                                                 className="mt-3 rounded-lg bg-[#C6A75E] px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-white"
                                             >
@@ -459,7 +515,7 @@ export default function UserDetailPage() {
                                             className="rounded-lg bg-[#1C1C1C] px-4 py-2 text-[#FAFAF9]"
                                             onClick={() => {
                                                 pushLog("Admin action: View Products.");
-                                                showToast("Products view opened");
+                                                router.push('/admin/products');
                                             }}
                                         >
                                             View Products
@@ -467,8 +523,8 @@ export default function UserDetailPage() {
                                         <button
                                             className="rounded-lg border border-neutral-200 px-4 py-2"
                                             onClick={() => {
-                                                setActiveTab("submissions");
                                                 pushLog("Admin action: View Submitted Samples.");
+                                                router.push('/admin/sample');
                                             }}
                                         >
                                             View Samples
@@ -533,7 +589,7 @@ export default function UserDetailPage() {
                                         className="rounded-lg bg-[#3E2723] px-5 py-2.5 text-white shadow-lg"
                                         onClick={() => {
                                             pushLog("Admin action: Assign New Verification.");
-                                            showToast("Assign verification opened");
+                                            router.push('/admin/sample');
                                         }}
                                     >
                                         Assign New Verification
@@ -542,7 +598,7 @@ export default function UserDetailPage() {
                                         className="rounded-lg border border-neutral-200 px-5 py-2.5 transition hover:bg-neutral-50"
                                         onClick={() => {
                                             pushLog("Admin action: View Assigned Tasks.");
-                                            showToast("Task board opened");
+                                            router.push('/admin/sample');
                                         }}
                                     >
                                         View All Tasks
@@ -568,7 +624,7 @@ export default function UserDetailPage() {
                                     <button
                                         onClick={() => {
                                             pushLog("Admin opened audit actions.");
-                                            showToast("Audit actions opened");
+                                            router.push('/admin/report');
                                         }}
                                         className="rounded-lg border border-neutral-200 px-4 py-2"
                                     >
@@ -616,90 +672,81 @@ export default function UserDetailPage() {
                                     </ol>
                                 )}
 
-                                {activeTab === "orders" &&
-                                    (role === "customer" || role === "artisan" ? (
-                                        <div className="mt-2 overflow-hidden rounded-xl border border-neutral-100">
-                                            <table className="w-full text-left text-xs">
-                                                <thead className="bg-neutral-50 uppercase tracking-widest text-neutral-400">
-                                                    <tr>
-                                                        <th className="px-5 py-4">ID</th>
-                                                        <th className="px-5 py-4">Status</th>
-                                                        <th className="px-5 py-4">Value</th>
-                                                        <th className="px-5 py-4 text-right">Date</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody className="divide-y divide-neutral-100">
-                                                    {ORDER_ROWS.map((order) => (
-                                                        <tr
-                                                            key={order.id}
-                                                            className="group cursor-pointer transition hover:bg-neutral-50"
-                                                            onClick={() => {
-                                                                pushLog(`Opened order detail ${order.id}.`);
-                                                                showToast(`Navigate to ${order.id}`);
-                                                            }}
-                                                        >
-                                                            <td className="px-5 py-4 font-bold text-neutral-700">{order.id}</td>
-                                                            <td className="px-5 py-4">
-                                                                <span className="rounded-full bg-neutral-100 px-2.5 py-1 text-[9px] font-black">
-                                                                    {order.status}
-                                                                </span>
-                                                            </td>
-                                                            <td className="px-5 py-4 font-bold">{order.amount}</td>
-                                                            <td className="px-5 py-4 text-right font-medium text-neutral-400">
-                                                                {order.date}
-                                                                <ChevronRight className="ml-1 inline h-3 w-3 opacity-0 transition group-hover:opacity-100" />
-                                                            </td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    ) : (
-                                        <p className="mt-2 text-sm text-neutral-500">Orders are available for customer and artisan roles only.</p>
-                                    ))}
-
-                                {activeTab === "submissions" &&
-                                    (role === "artisan" ? (
-                                        <div className="mt-2 space-y-4">
-                                            {SUBMISSION_ROWS.map((submission) => (
-                                                <div
-                                                    key={submission.id}
-                                                    className="group flex cursor-pointer items-center justify-between rounded-2xl border border-neutral-100 p-5 transition hover:border-[#C6A75E] hover:bg-neutral-50/50"
-                                                    onClick={() => {
-                                                        pushLog(`Opened sample detail ${submission.id}.`);
-                                                        showToast(`Navigate to ${submission.id}`);
-                                                    }}
-                                                >
-                                                    <div className="flex items-center gap-4">
-                                                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-neutral-100">
-                                                            <Upload className="h-5 w-5 text-neutral-400" />
-                                                        </div>
-                                                        <div>
-                                                            <p className="text-sm font-bold text-neutral-800">{submission.title}</p>
-                                                            <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-neutral-400">
-                                                                {submission.id} - {submission.date}
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                    <div className="flex items-center gap-4">
-                                                        <span
-                                                            className={cn(
-                                                                "rounded-full border px-3 py-1 text-[9px] font-black tracking-widest",
-                                                                submission.status === "Approved" && "border-emerald-100 bg-emerald-50 text-emerald-700",
-                                                                submission.status === "Pending" && "border-amber-100 bg-amber-50 text-amber-700",
-                                                                submission.status === "Rejected" && "border-rose-100 bg-rose-50 text-rose-700"
-                                                            )}
-                                                        >
-                                                            {submission.status.toUpperCase()}
-                                                        </span>
-                                                        <ChevronRight className="h-4 w-4 text-neutral-300 transition group-hover:text-[#C6A75E]" />
-                                                    </div>
+                                {activeTab === "orders" && (
+                                    <div className="mt-2">
+                                        {ordersLoading ? (
+                                            <div className="flex items-center justify-center py-16">
+                                                <Loader2 className="h-7 w-7 animate-spin text-[#C6A75E]" />
+                                            </div>
+                                        ) : orders.length === 0 ? (
+                                            <div className="flex flex-col items-center justify-center py-14 text-neutral-400">
+                                                <ShoppingBag className="mb-3 h-10 w-10 opacity-30" />
+                                                <p className="text-sm font-bold uppercase tracking-widest">No orders found</p>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <div className="overflow-hidden rounded-xl border border-neutral-100">
+                                                    <table className="w-full text-left text-xs">
+                                                        <thead className="bg-neutral-50 uppercase tracking-widest text-neutral-400">
+                                                            <tr>
+                                                                <th className="px-5 py-4">Order ID</th>
+                                                                <th className="px-5 py-4">Status</th>
+                                                                <th className="px-5 py-4">Total</th>
+                                                                <th className="px-5 py-4 text-right">Date</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody className="divide-y divide-neutral-100">
+                                                            {orders.map((order: any) => (
+                                                                <tr
+                                                                    key={order.id}
+                                                                    className="group cursor-pointer transition hover:bg-neutral-50"
+                                                                    onClick={() => pushLog(`Opened order ${order.id}.`)}
+                                                                >
+                                                                    <td className="px-5 py-4 font-mono font-bold text-neutral-700">
+                                                                        {order.id.slice(0, 10)}…
+                                                                    </td>
+                                                                    <td className="px-5 py-4">
+                                                                        <span className={cn("rounded-full border px-2.5 py-1 text-[9px] font-black tracking-widest", orderStatusStyles(order.status))}>
+                                                                            {order.status.replace("_", " ")}
+                                                                        </span>
+                                                                    </td>
+                                                                    <td className="px-5 py-4 font-bold text-[#C6A75E]">
+                                                                        {Number(order.totalAmount).toLocaleString()} {order.currency || "ETB"}
+                                                                    </td>
+                                                                    <td className="px-5 py-4 text-right font-medium text-neutral-400">
+                                                                        {new Date(order.createdAt).toLocaleDateString()}
+                                                                        <ChevronRight className="ml-1 inline h-3 w-3 opacity-0 transition group-hover:opacity-100" />
+                                                                    </td>
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
                                                 </div>
-                                            ))}
-                                        </div>
-                                    ) : (
-                                        <p className="mt-2 text-sm text-neutral-500">Submissions are available for artisan role only.</p>
-                                    ))}
+                                                {ordersMeta && ordersMeta.totalPages > 1 && (
+                                                    <div className="mt-4 flex items-center justify-between text-[11px] font-bold uppercase tracking-widest text-neutral-400">
+                                                        <span>Page {ordersMeta.page} of {ordersMeta.totalPages} · {ordersMeta.total} orders</span>
+                                                        <div className="flex gap-2">
+                                                            <button
+                                                                disabled={ordersPage <= 1}
+                                                                onClick={() => setOrdersPage((p) => p - 1)}
+                                                                className="rounded-lg border border-neutral-200 px-3 py-1.5 transition hover:bg-neutral-50 disabled:opacity-30"
+                                                            >
+                                                                Prev
+                                                            </button>
+                                                            <button
+                                                                disabled={ordersPage >= ordersMeta.totalPages}
+                                                                onClick={() => setOrdersPage((p) => p + 1)}
+                                                                className="rounded-lg border border-neutral-200 px-3 py-1.5 transition hover:bg-neutral-50 disabled:opacity-30"
+                                                            >
+                                                                Next
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </>
+                                        )}
+                                    </div>
+                                )}
 
                                 {activeTab === "notes" && (
                                     <div className="mt-2 space-y-5">
@@ -782,7 +829,7 @@ export default function UserDetailPage() {
                                 <h3 className="mb-4 text-[10px] font-black uppercase tracking-[0.2em] text-neutral-400">Profile Information</h3>
                                 <div className="flex items-center gap-3">
                                     <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#C6A75E]/20 font-display text-lg font-bold text-[#7E6322]">
-                                        {user.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+                                        {(user.name || "U").split(' ').filter(Boolean).map((n: any[]) => n[0]).join('').toUpperCase().slice(0, 2)}
                                     </div>
                                     <div>
                                         <p className="text-sm font-semibold">{user.name}</p>
@@ -908,9 +955,13 @@ export default function UserDetailPage() {
                                             key={label}
                                             onClick={() => {
                                                 pushLog(`Cross navigation: ${label}.`);
-                                                showToast(label);
-                                                if (label === "View Orders") setActiveTab("orders");
-                                                if (label === "View Samples") setActiveTab("submissions");
+                                                if (label === "View Orders") {
+                                                    setActiveTab("orders");
+                                                } else if (label === "View Products") {
+                                                    router.push('/admin/products');
+                                                } else if (label === "View Samples" || label === "View Tasks") {
+                                                    router.push('/admin/sample');
+                                                }
                                             }}
                                             className="rounded-xl border border-neutral-100 bg-neutral-50 px-3 py-2 text-left transition hover:-translate-y-1"
                                         >

@@ -101,7 +101,6 @@ const riskMessagesByRole: Record<Role, string[]> = {
 const tabs: { key: TabKey; label: string }[] = [
     { key: "activity", label: "Activity" },
     { key: "orders", label: "Orders" },
-    { key: "submissions", label: "Submissions" },
     { key: "notes", label: "Notes" },
 ];
 

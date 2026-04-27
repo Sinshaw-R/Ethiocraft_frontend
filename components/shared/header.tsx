@@ -32,6 +32,10 @@ export function Header() {
   const headerRef = useRef<HTMLElement>(null)
   const searchBarRef = useRef<HTMLDivElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
+  const openTimerRef = useRef<number | null>(null)
+  const focusTimerRef = useRef<number | null>(null)
+  const closeTweenRef = useRef<gsap.core.Tween | null>(null)
+  const isMountedRef = useRef(true)
   const { setIsHovered: setGlobalIsHovered } = useHeader()
   const router = useRouter()
   const { token, role } = useAuth()
@@ -72,6 +76,18 @@ export function Header() {
   }, [])
 
   useEffect(() => {
+    return () => {
+      isMountedRef.current = false
+
+      if (openTimerRef.current) window.clearTimeout(openTimerRef.current)
+      if (focusTimerRef.current) window.clearTimeout(focusTimerRef.current)
+
+      closeTweenRef.current?.kill()
+      if (searchBarRef.current) gsap.killTweensOf(searchBarRef.current)
+    }
+  }, [])
+
+  useEffect(() => {
     const ctx = gsap.context(() => {
       let bgColor = '#FAFAF9'
       let borderColor = 'rgba(0, 0, 0, 0.1)' // Subtle bottom border
@@ -93,26 +109,48 @@ export function Header() {
   }, [isOverHero, isHovered])
 
   const handleSearchClick = () => {
+    if (openTimerRef.current) window.clearTimeout(openTimerRef.current)
+    if (focusTimerRef.current) window.clearTimeout(focusTimerRef.current)
+    closeTweenRef.current?.kill()
+    if (searchBarRef.current) gsap.killTweensOf(searchBarRef.current)
+
     setIsSearchOpen(true)
-    // Wait for render
-    setTimeout(() => {
+
+    // Wait for render and animate only if still mounted.
+    openTimerRef.current = window.setTimeout(() => {
+      if (!isMountedRef.current) return
       if (searchBarRef.current) {
         gsap.set(searchBarRef.current, { y: '-100%' })
         gsap.to(searchBarRef.current, { y: '0%', duration: 0.5, ease: 'power2.out' })
-        setTimeout(() => searchInputRef.current?.focus(), 300)
+        focusTimerRef.current = window.setTimeout(() => {
+          if (!isMountedRef.current) return
+          searchInputRef.current?.focus()
+        }, 300)
       }
     }, 0)
   }
 
   const handleCloseSearch = () => {
-    if (searchBarRef.current) {
-      gsap.to(searchBarRef.current, {
-        y: '-100%',
-        duration: 0.5,
-        ease: 'power2.out',
-        onComplete: () => setIsSearchOpen(false)
-      })
+    if (openTimerRef.current) window.clearTimeout(openTimerRef.current)
+    if (focusTimerRef.current) window.clearTimeout(focusTimerRef.current)
+    closeTweenRef.current?.kill()
+
+    const target = searchBarRef.current
+    if (!target) {
+      if (isMountedRef.current) setIsSearchOpen(false)
+      return
     }
+
+    gsap.killTweensOf(target)
+    closeTweenRef.current = gsap.to(target, {
+      y: '-100%',
+      duration: 0.5,
+      ease: 'power2.out',
+      onComplete: () => {
+        if (!isMountedRef.current) return
+        setIsSearchOpen(false)
+      }
+    })
   }
 
   const handleSearchSubmit = (event: React.FormEvent<HTMLFormElement>) => {

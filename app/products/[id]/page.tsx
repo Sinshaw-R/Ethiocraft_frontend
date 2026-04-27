@@ -187,16 +187,34 @@ export default function App() {
 
   useEffect(() => {
     if (!is3DActivated) return;
+    let isActive = true;
+
     if (customElements.get("model-viewer")) {
-      setIsModelViewerReady(true);
+      if (isActive) setIsModelViewerReady(true);
       return;
     }
+
+    const existingScript = document.querySelector<HTMLScriptElement>(
+      'script[src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"]',
+    );
+    if (existingScript) {
+      if (isActive) setIsModelViewerReady(true);
+      return;
+    }
+
     const script = document.createElement("script");
     script.type = "module";
     script.src =
       "https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js";
-    script.onload = () => setIsModelViewerReady(true);
+    script.onload = () => {
+      if (isActive) setIsModelViewerReady(true);
+    };
     document.head.appendChild(script);
+
+    return () => {
+      isActive = false;
+      script.onload = null;
+    };
   }, [is3DActivated]);
 
   const isSectionVisible = (id: string) => revealedSections.includes(id);

@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 import { Header } from '@/components/shared/header';
 import { Footer } from '@/components/shared/footer';
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import ChatSupport from '@/components/ChatSupport';
 import { useCart } from '@/lib/cart-context';
@@ -15,6 +15,7 @@ export default function App() {
   const { items, updateQuantity: updateCartQuantity, removeItem: removeCartItem } = useCart();
   const [leavingIds, setLeavingIds] = useState<number[]>([]);
   const [quantityPulseId, setQuantityPulseId] = useState<number | null>(null);
+  const timeoutIdsRef = useRef<number[]>([]);
   const TAX_RATE = 0.15;
 
   const subtotal = useMemo(
@@ -25,20 +26,33 @@ export default function App() {
   const tax = subtotal * TAX_RATE;
   const total = subtotal + shipping + tax;
 
+  useEffect(() => {
+    return () => {
+      timeoutIdsRef.current.forEach((id) => window.clearTimeout(id));
+      timeoutIdsRef.current = [];
+    };
+  }, []);
+
   const updateQuantity = (id: number, nextQuantity: number) => {
     if (nextQuantity < 1) return;
     updateCartQuantity(id, nextQuantity);
     setQuantityPulseId(id);
-    window.setTimeout(() => setQuantityPulseId((active) => (active === id ? null : active)), 220);
+    const timeoutId = window.setTimeout(() => {
+      setQuantityPulseId((active) => (active === id ? null : active));
+      timeoutIdsRef.current = timeoutIdsRef.current.filter((existingId) => existingId !== timeoutId);
+    }, 220);
+    timeoutIdsRef.current.push(timeoutId);
   };
 
   const removeItem = (id: number, name: string) => {
     setLeavingIds((current) => (current.includes(id) ? current : [...current, id]));
-    window.setTimeout(() => {
+    const timeoutId = window.setTimeout(() => {
       removeCartItem(id);
       setLeavingIds((current) => current.filter((itemId) => itemId !== id));
       toast.info(`${name} removed from cart`);
+      timeoutIdsRef.current = timeoutIdsRef.current.filter((existingId) => existingId !== timeoutId);
     }, 360);
+    timeoutIdsRef.current.push(timeoutId);
   };
 
   const emptyState = items.length === 0;
@@ -65,7 +79,7 @@ export default function App() {
         </header>
 
         {emptyState ? (
-          <section className="flex min-h-[58vh] flex-col items-center justify-center text-center">
+          <section key="cart-empty" className="flex min-h-[58vh] flex-col items-center justify-center text-center">
             <div className="text-6xl text-[#c7c0b2]">🧺</div>
             <h2
               className="font-druk-medium mt-5 text-2xl uppercase tracking-[0.05em]"
@@ -83,7 +97,7 @@ export default function App() {
             </Link>
           </section>
         ) : (
-          <section className="mt-10 grid grid-cols-1 gap-12 lg:grid-cols-12 lg:gap-14">
+          <section key="cart-populated" className="mt-10 grid grid-cols-1 gap-12 lg:grid-cols-12 lg:gap-14">
             <div className="lg:col-span-8">
               <ul className="divide-y divide-[#ece6da]">
                 {items.map((item) => {

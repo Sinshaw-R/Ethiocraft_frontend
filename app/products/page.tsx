@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Header } from '@/components/shared/header';
 import { Footer } from '@/components/shared/footer';
@@ -121,6 +121,14 @@ const regionsList = ['Addis Ababa', 'Oromia', 'SNNPR', 'Amhara', 'Tigray'];
 const materialsList = ['Clay', 'Cotton', 'Silver', 'Straw', 'Leather'];
 
 export default function productPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#FAFAF9] flex items-center justify-center">Loading...</div>}>
+      <ProductPageContent />
+    </Suspense>
+  );
+}
+
+function ProductPageContent() {
   const searchParams = useSearchParams();
   const { token } = useAuth();
   const { addItem } = useCart();
@@ -318,7 +326,7 @@ export default function productPage() {
         )}
 
         {filteredProducts.length === 0 ? (
-          <section className="py-20 text-center">
+          <section key="empty-products" className="py-20 text-center">
             <p className="text-lg">No pieces found for this selection.</p>
             <button
               onClick={resetFilters}
@@ -329,7 +337,7 @@ export default function productPage() {
             </button>
           </section>
         ) : (
-          <section className="grid grid-cols-2 gap-x-6 gap-y-12 md:grid-cols-3 md:gap-x-9 md:gap-y-16 xl:grid-cols-4">
+          <section key="product-grid" className="grid grid-cols-2 gap-x-6 gap-y-12 md:grid-cols-3 md:gap-x-9 md:gap-y-16 xl:grid-cols-4">
             {filteredProducts.map((product, index) => {
               const isVisible = visibleIds.includes(product.id);
               return (
@@ -343,21 +351,8 @@ export default function productPage() {
                     transition: `opacity 700ms ease ${index * 70}ms, transform 700ms ease ${index * 70}ms`,
                   }}
                 >
-                  <Link href={`/products/${product.id}`} className="group block">
-                    <div className="relative overflow-hidden bg-[#f1eee8]">
-                      <button
-                        type="button"
-                        aria-label={wishlistIds.includes(product.id) ? 'Remove from wishlist' : 'Add to wishlist'}
-                        onClick={(event) => handleWishlistToggle(event, product.id)}
-                        className="absolute right-3 top-3 z-20 flex h-9 w-9 items-center justify-center transition-colors"
-                      >
-                        <Heart
-                          className={`h-5 w-5 transition-colors ${wishlistIds.includes(product.id)
-                            ? 'fill-[#C6A75E] text-[#C6A75E]'
-                            : 'text-[#cfc3b8] hover:text-[#C6A75E]'
-                            }`}
-                        />
-                      </button>
+                  <div className="relative overflow-hidden bg-[#f1eee8] group block">
+                    <Link href={`/products/${product.id}`} className="block w-full h-full">
                       {product.badge && (
                         <span
                           className="absolute left-3 top-3 z-10 border border-[#d8c28a] bg-[#fafaf9cc] px-2 py-1 text-[10px] uppercase tracking-[0.1em]"
@@ -377,8 +372,21 @@ export default function productPage() {
                       >
                         Quick View
                       </div>
-                    </div>
-                  </Link>
+                    </Link>
+                    <button
+                      type="button"
+                      aria-label={wishlistIds.includes(product.id) ? 'Remove from wishlist' : 'Add to wishlist'}
+                      onClick={(event) => handleWishlistToggle(event, product.id)}
+                      className="absolute right-3 top-3 z-20 flex h-9 w-9 items-center justify-center transition-colors"
+                    >
+                      <Heart
+                        className={`h-5 w-5 transition-colors ${wishlistIds.includes(product.id)
+                          ? 'fill-[#C6A75E] text-[#C6A75E]'
+                          : 'text-[#cfc3b8] hover:text-[#C6A75E]'
+                          }`}
+                      />
+                    </button>
+                  </div>
 
                   <div className="pt-4">
                     {/* ADDED RATING HERE */}

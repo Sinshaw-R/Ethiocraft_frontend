@@ -134,6 +134,7 @@ export default function UserDetailPage() {
     const [ordersMeta, setOrdersMeta] = useState<any>(null);
     const [ordersLoading, setOrdersLoading] = useState(false);
     const [ordersPage, setOrdersPage] = useState(1);
+    const [roleDetailsLoading, setRoleDetailsLoading] = useState(false);
 
     const [notes, setNotes] = useState<Note[]>([
         {
@@ -225,9 +226,61 @@ export default function UserDetailPage() {
             id: userData.id || id,
             joined: userData.createdAt ? new Date(userData.createdAt).toLocaleDateString() : "N/A",
             lastActive: "Recent",
-            avatar: userData.avatar || "https://images.unsplash.com/photo-1544723795-3fb6469f5b39?auto=format&fit=crop&w=300&q=80",
+            avatar: userData.avatarUrl || userData.avatar || "https://images.unsplash.com/photo-1544723795-3fb6469f5b39?auto=format&fit=crop&w=300&q=80",
         };
     }, [userData, id]);
+
+    const roleDetails = useMemo(() => {
+        const profile = userData?.artisanProfile || {};
+        const extensionData = profile?.extensionData || {};
+        const productStats = extensionData?.productStats || {};
+        const sampleStats = extensionData?.sampleStats || {};
+
+        return {
+            artisan: {
+                shopName: profile.shopName || "No shop name",
+                bio: profile.bio || "No artisan biography available yet.",
+                verificationStatus: profile.verificationStatus || "PENDING",
+                region: profile.region || "—",
+                city: profile.city || "—",
+                culturalMetadata: profile.culturalMetadata || "—",
+                products: Number(productStats.total ?? 0),
+                approvedProducts: Number(productStats.approved ?? 0),
+                pendingSamples: Number(sampleStats.pending ?? 0),
+            },
+            agent: {
+                assignedSamples: Number(userData?.agentSummary?.assignedSamples ?? 0),
+                approvedSamples: Number(userData?.agentSummary?.approvedSamples ?? 0),
+                rejectedSamples: Number(userData?.agentSummary?.rejectedSamples ?? 0),
+            },
+        };
+    }, [userData]);
+
+    useEffect(() => {
+        const hydrateRoleDetails = async () => {
+            if (!userData?.id || role !== "artisan" || userData?.artisanProfile) return;
+            try {
+                setRoleDetailsLoading(true);
+                const base = (process.env.NEXT_PUBLIC_BASE_URL ?? "").replace(/\/$/, "") || "http://localhost:4000/api/v1";
+                const token = localStorage.getItem("token");
+                const search = encodeURIComponent(userData?.email || `${userData?.firstName || ""} ${userData?.lastName || ""}`.trim());
+                const res = await fetch(`${base}/admin/users/role/ARTISAN?search=${search}&page=1&limit=10`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                });
+                if (!res.ok) throw new Error(`Error: ${res.status}`);
+                const json = await res.json();
+                const fetched = (json?.data?.items || []).find((item: any) => item.id === userData.id);
+                if (fetched?.artisanProfile) {
+                    setUserData((prev: any) => ({ ...prev, artisanProfile: fetched.artisanProfile }));
+                }
+            } catch (err) {
+                console.error("Failed to hydrate artisan role details:", err);
+            } finally {
+                setRoleDetailsLoading(false);
+            }
+        };
+        hydrateRoleDetails();
+    }, [id, role, userData]);
 
     const combinedLogs = useMemo(() => {
         return [...adminLogs, ...BASE_ACTIVITY].sort((a, b) => (a.date < b.date ? 1 : -1));
@@ -343,26 +396,26 @@ export default function UserDetailPage() {
             value: role === "customer"
                 ? String(userData?.customerSummary?.totalOrders ?? "—")
                 : role === "artisan"
-                    ? String(userData?.artisanProfile ? "—" : "—")
-                    : "—",
+                    ? String(roleDetails.artisan.products ?? "—")
+                    : String(roleDetails.agent.assignedSamples ?? "—"),
             icon: ShoppingBag,
         },
         {
             label: role === "artisan" ? "Verification" : "Status",
             value: role === "artisan"
-                ? (userData?.artisanProfile?.verificationStatus ?? "—")
+                ? (roleDetails.artisan.verificationStatus ?? "—")
                 : (userData?.status ?? status.toUpperCase()),
             icon: ShieldAlert,
         },
         {
-            label: role === "artisan" ? "Rev ETB" : role === "customer" ? "Spent ETB" : "Region",
+            label: role === "artisan" ? "Region" : role === "customer" ? "Spent ETB" : "Samples Approved",
             value: role === "customer"
                 ? userData?.customerSummary?.totalSpent != null
                     ? Number(userData.customerSummary.totalSpent).toLocaleString()
                     : "—"
                 : role === "artisan"
-                    ? (userData?.artisanProfile?.region ?? "—")
-                    : "—",
+                    ? (roleDetails.artisan.region ?? "—")
+                    : String(roleDetails.agent.approvedSamples ?? "—"),
             icon: CreditCard,
         },
     ];
@@ -501,17 +554,17 @@ export default function UserDetailPage() {
                                     <h2 className="font-display text-xl uppercase tracking-[0.04em]">Artisan Profile</h2>
                                     <div className="mt-6 space-y-5">
                                         <div>
-                                            <p className="text-lg font-bold text-[#C6A75E]">Addis Loom Studio</p>
+                                            <p className="text-lg font-bold text-[#C6A75E]">{roleDetails.artisan.shopName}</p>
                                             <p className="mt-2 max-w-lg text-sm leading-relaxed text-neutral-600">
-                                                Traditional weaving and clay craft studio rooted in Gurage and Oromo motifs.
+                                                {roleDetails.artisan.bio}
                                             </p>
                                         </div>
                                         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
                                             {[
-                                                { l: "Products", v: "64" },
-                                                { l: "Approved", v: "58" },
-                                                { l: "Pending", v: "6" },
-                                                { l: "Sales", v: "182.5K" },
+                                                { l: "Products", v: String(roleDetails.artisan.products) },
+                                                { l: "Approved", v: String(roleDetails.artisan.approvedProducts) },
+                                                { l: "Pending Samples", v: String(roleDetails.artisan.pendingSamples) },
+                                                { l: "Verification", v: roleDetails.artisan.verificationStatus },
                                             ].map((stat) => (
                                                 <div key={stat.l} className="rounded-xl border border-neutral-100 bg-neutral-50 p-3">
                                                     <p className="text-[9px] font-bold uppercase tracking-widest text-neutral-500">{stat.l}</p>
@@ -522,11 +575,16 @@ export default function UserDetailPage() {
                                         <div className="rounded-xl border border-amber-100 bg-amber-50/40 p-4">
                                             <div className="flex items-center gap-3">
                                                 <BadgeCheck className="h-5 w-5 text-emerald-700" />
-                                                <p className="text-sm font-bold">Verification Status: Verified</p>
+                                                <p className="text-sm font-bold">Verification Status: {roleDetails.artisan.verificationStatus}</p>
                                             </div>
                                             <p className="mt-2 text-xs text-neutral-600">
-                                                Region/City: Addis Ababa/Bole. Cultural metadata: handloom textiles, coffee ceremony ceramics, natural dye techniques.
+                                                Region/City: {roleDetails.artisan.region}/{roleDetails.artisan.city}. Cultural metadata: {roleDetails.artisan.culturalMetadata}.
                                             </p>
+                                            {!userData?.artisanProfile && (
+                                                <p className="mt-2 text-[10px] font-semibold uppercase tracking-wider text-neutral-500">
+                                                    {roleDetailsLoading ? "Loading artisan details..." : "Some artisan details are not available."}
+                                                </p>
+                                            )}
                                             <button
                                                 onClick={() => {
                                                     pushLog("Admin opened verification pipeline view.");
@@ -586,29 +644,29 @@ export default function UserDetailPage() {
                                 <div className="mt-6 grid grid-cols-1 gap-8 md:grid-cols-2">
                                     <div className="space-y-4">
                                         <div className="flex items-center justify-between text-xs">
-                                            <span className="font-bold uppercase tracking-widest text-neutral-400">Region Coverage</span>
-                                            <span className="font-bold">Addis Ababa, Oromia</span>
+                                            <span className="font-bold uppercase tracking-widest text-neutral-400">Profile Region</span>
+                                            <span className="font-bold">{roleDetails.artisan.region}</span>
                                         </div>
                                         <div className="flex items-center justify-between text-xs">
-                                            <span className="font-bold uppercase tracking-widest text-neutral-400">Success Rate</span>
-                                            <span className="font-bold text-emerald-600">91%</span>
+                                            <span className="font-bold uppercase tracking-widest text-neutral-400">Approved Samples</span>
+                                            <span className="font-bold text-emerald-600">{roleDetails.agent.approvedSamples}</span>
                                         </div>
                                         <div className="flex items-center justify-between text-xs">
-                                            <span className="font-bold uppercase tracking-widest text-neutral-400">Avg Completion</span>
-                                            <span className="font-bold">2.4 days</span>
+                                            <span className="font-bold uppercase tracking-widest text-neutral-400">Rejected Samples</span>
+                                            <span className="font-bold">{roleDetails.agent.rejectedSamples}</span>
                                         </div>
                                         <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-neutral-100">
-                                            <div className="h-full w-[91%] bg-emerald-500" />
+                                            <div className="h-full bg-emerald-500" style={{ width: `${Math.min(100, roleDetails.agent.assignedSamples * 10)}%` }} />
                                         </div>
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="rounded-2xl border border-blue-100 bg-blue-50/50 p-4 shadow-inner">
                                             <p className="text-[9px] font-black uppercase tracking-widest text-blue-600">Active tasks</p>
-                                            <p className="mt-1 text-3xl font-black text-blue-800">6</p>
+                                            <p className="mt-1 text-3xl font-black text-blue-800">{roleDetails.agent.assignedSamples}</p>
                                         </div>
                                         <div className="rounded-2xl border border-neutral-100 bg-neutral-50/50 p-4 shadow-inner">
-                                            <p className="text-[9px] font-black uppercase tracking-widest text-neutral-500">Completed</p>
-                                            <p className="mt-1 text-3xl font-black text-neutral-800">18</p>
+                                            <p className="text-[9px] font-black uppercase tracking-widest text-neutral-500">Approved</p>
+                                            <p className="mt-1 text-3xl font-black text-neutral-800">{roleDetails.agent.approvedSamples}</p>
                                         </div>
                                     </div>
                                 </div>
@@ -640,7 +698,7 @@ export default function UserDetailPage() {
                                 <h2 className="font-display text-xl uppercase tracking-[0.04em]">Admin Visibility</h2>
                                 <div className="mt-4 space-y-3 text-sm text-neutral-700">
                                     <p>Role permissions include finance visibility, moderation, verification override, and role assignment.</p>
-                                    <p>All actions are tracked in immutable audit streams.</p>
+                                    <p>Account created on {user.joined}. Current status: {STATUS_UPPER[status]}.</p>
                                 </div>
                                 <div className="mt-6 flex flex-wrap gap-3 text-[11px] font-bold uppercase tracking-wider">
                                     <button

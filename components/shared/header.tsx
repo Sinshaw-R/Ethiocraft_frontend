@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { ShoppingCart, Search, Menu, X, UserCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -9,6 +10,7 @@ import { gsap } from 'gsap'
 import { useHeader } from '@/lib/header-context'
 import { Separator } from '@/components/ui/separator'
 import { useAuth } from '@/lib/auth-context'
+import { useCart } from '@/lib/cart-context'
 import MegaMenu from '../MegaMenu'
 
 /** Returns the dashboard URL for the currently logged-in role. */
@@ -26,11 +28,18 @@ export function Header() {
   const [isOverHero, setIsOverHero] = useState(true)
   const [isHovered, setIsHovered] = useState(false)
   const [isSearchOpen, setIsSearchOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
   const headerRef = useRef<HTMLElement>(null)
   const searchBarRef = useRef<HTMLDivElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
+  const openTimerRef = useRef<number | null>(null)
+  const focusTimerRef = useRef<number | null>(null)
+  const closeTweenRef = useRef<gsap.core.Tween | null>(null)
+  const isMountedRef = useRef(true)
   const { setIsHovered: setGlobalIsHovered } = useHeader()
+  const router = useRouter()
   const { token, role } = useAuth()
+  const { cartCount } = useCart()
   const isLoggedIn = Boolean(token)
 
   useEffect(() => {
@@ -67,6 +76,18 @@ export function Header() {
   }, [])
 
   useEffect(() => {
+    return () => {
+      isMountedRef.current = false
+
+      if (openTimerRef.current) window.clearTimeout(openTimerRef.current)
+      if (focusTimerRef.current) window.clearTimeout(focusTimerRef.current)
+
+      closeTweenRef.current?.kill()
+      if (searchBarRef.current) gsap.killTweensOf(searchBarRef.current)
+    }
+  }, [])
+
+  useEffect(() => {
     const ctx = gsap.context(() => {
       let bgColor = '#FAFAF9'
       let borderColor = 'rgba(0, 0, 0, 0.1)' // Subtle bottom border
@@ -78,7 +99,7 @@ export function Header() {
 
       gsap.to(headerRef.current, {
         backgroundColor: bgColor,
-        borderBottom: `1px solid ${borderColor}`,
+        borderBottom: `0px solid ${borderColor}`,
         duration: 0.3,
         ease: 'power2.inOut'
       })
@@ -88,26 +109,52 @@ export function Header() {
   }, [isOverHero, isHovered])
 
   const handleSearchClick = () => {
+    if (openTimerRef.current) window.clearTimeout(openTimerRef.current)
+    if (focusTimerRef.current) window.clearTimeout(focusTimerRef.current)
+    closeTweenRef.current?.kill()
+    if (searchBarRef.current) gsap.killTweensOf(searchBarRef.current)
+
     setIsSearchOpen(true)
-    // Wait for render
-    setTimeout(() => {
+
+    // Wait for render and animate only if still mounted.
+    openTimerRef.current = window.setTimeout(() => {
+      if (!isMountedRef.current) return
       if (searchBarRef.current) {
         gsap.set(searchBarRef.current, { y: '-100%' })
         gsap.to(searchBarRef.current, { y: '0%', duration: 0.5, ease: 'power2.out' })
-        setTimeout(() => searchInputRef.current?.focus(), 300)
+        focusTimerRef.current = window.setTimeout(() => {
+          if (!isMountedRef.current) return
+          searchInputRef.current?.focus()
+        }, 300)
       }
     }, 0)
   }
 
   const handleCloseSearch = () => {
-    if (searchBarRef.current) {
-      gsap.to(searchBarRef.current, {
-        y: '-100%',
-        duration: 0.5,
-        ease: 'power2.out',
-        onComplete: () => setIsSearchOpen(false)
-      })
-    }
+    if (openTimerRef.current) window.clearTimeout(openTimerRef.current)
+    if (focusTimerRef.current) window.clearTimeout(focusTimerRef.current)
+    closeTweenRef.current?.kill()
+    if (isMountedRef.current) setIsSearchOpen(false)
+
+    const target = searchBarRef.current
+    if (!target) return
+
+    gsap.killTweensOf(target)
+    closeTweenRef.current = gsap.to(target, {
+      y: '-100%',
+      duration: 0.5,
+      ease: 'power2.out',
+    })
+  }
+
+  const handleSearchSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    const query = searchQuery.trim()
+    if (!query) return
+
+    router.push(`/products?q=${encodeURIComponent(query)}`)
+    handleCloseSearch()
+    setSearchQuery('')
   }
 
   useEffect(() => {
@@ -196,14 +243,19 @@ export function Header() {
                   </Link>
                 )}
                 <Link href="/cart">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className={`transition-colors ${textColor} hover:bg-[#FAFAF9]/20`}
-                >
-                  <ShoppingCart className="w-5 h-5" />
-                </Button>
-              </Link>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={`relative transition-colors ${textColor} hover:bg-[#FAFAF9]/20`}
+                  >
+                    <ShoppingCart className="w-5 h-5" />
+                    {cartCount > 0 && (
+                      <span className="absolute -right-1 -top-1 min-w-5 h-5 px-1 rounded-full bg-primary text-primary-foreground text-[10px] leading-5 text-center font-bold">
+                        {cartCount}
+                      </span>
+                    )}
+                  </Button>
+                </Link>
               </div>
 
               <Button
@@ -291,15 +343,18 @@ export function Header() {
               onClick={(e) => e.stopPropagation()}
             >
               <div className="container mx-auto px-4 py-4">
-                <div className="relative w-full max-w-2xl mx-auto">
+                <form className="relative w-full max-w-2xl mx-auto" onSubmit={handleSearchSubmit}>
                   <Input
                     ref={searchInputRef}
                     type="search"
                     placeholder="Search products..."
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)}
                     className="pl-10 pr-10 text-[#1C1C1C] placeholder:text-muted-foreground bg-white border border-gray-300"
                   />
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Button
+                    type="button"
                     variant="ghost"
                     size="icon"
                     className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-[#1C1C1C]"
@@ -307,7 +362,7 @@ export function Header() {
                   >
                     <X className="w-4 h-4" />
                   </Button>
-                </div>
+                </form>
               </div>
             </div>
           </div>

@@ -17,6 +17,7 @@ export default function ChatSupport() {
   const [input, setInput] = useState('')
   const [isTyping, setIsTyping] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const responseTimerRef = useRef<number | null>(null)
   
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -34,6 +35,14 @@ export default function ChatSupport() {
     }
   }, [messages, isTyping])
 
+  useEffect(() => {
+    return () => {
+      if (responseTimerRef.current) {
+        window.clearTimeout(responseTimerRef.current)
+      }
+    }
+  }, [])
+
   const handleSend = () => {
     if (!input.trim()) return
 
@@ -49,7 +58,11 @@ export default function ChatSupport() {
     setIsTyping(true)
 
     // Simulate support response
-    setTimeout(() => {
+    if (responseTimerRef.current) {
+      window.clearTimeout(responseTimerRef.current)
+    }
+
+    responseTimerRef.current = window.setTimeout(() => {
       const supportMessage: Message = {
         id: crypto.randomUUID(),
         sender: 'support',
@@ -58,6 +71,7 @@ export default function ChatSupport() {
       }
       setMessages((prev) => [...prev, supportMessage])
       setIsTyping(false)
+      responseTimerRef.current = null
     }, 1500)
   }
 

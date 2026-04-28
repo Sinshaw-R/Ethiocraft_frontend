@@ -1,10 +1,45 @@
 "use client";
-import { FormEvent, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Header } from '@/components/shared/header';
 import { Footer } from '@/components/shared/footer';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:4000/api/v1';
+const forgotPasswordSchema = z
+  .object({
+    email: z.string().email('Please enter a valid email address'),
+    otp: z.string().optional(),
+    password: z.string().optional(),
+    confirmPassword: z.string().optional(),
+  })
+  .superRefine((values, ctx) => {
+    if (values.otp && !/^\d{6}$/.test(values.otp.trim())) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['otp'],
+        message: 'Verification code must be 6 digits',
+      });
+    }
+    if (values.password && values.password.length < 8) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['password'],
+        message: 'Password must be at least 8 characters',
+      });
+    }
+    if (values.password && values.confirmPassword !== values.password) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['confirmPassword'],
+        message: 'Passwords do not match',
+      });
+    }
+  });
+
+type ForgotPasswordFormData = z.infer<typeof forgotPasswordSchema>;
 
 type Step = 'EMAIL' | 'VERIFY_RESET' | 'SUCCESS';
 
@@ -14,26 +49,37 @@ export default function ForgotPasswordPage() {
   const [step, setStep] = useState<Step>('EMAIL');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-
-  // Form Data
-  const [email, setEmail] = useState('');
-  const [otp, setOtp] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const {
+    register,
+    watch,
+    trigger,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<ForgotPasswordFormData>({
+    resolver: zodResolver(forgotPasswordSchema),
+    defaultValues: {
+      email: '',
+      otp: '',
+      password: '',
+      confirmPassword: '',
+    },
+  });
+  const formData = watch();
 
   useEffect(() => { setIsReady(true); }, []);
 
   // Step 1: Request Reset (Sends OTP to Email)
-  const handleRequestReset = async (e: FormEvent) => {
-    e.preventDefault();
+  const handleRequestReset = async (values: ForgotPasswordFormData) => {
     setErrorMessage('');
+    const isValid = await trigger('email');
+    if (!isValid) return;
     setIsLoading(true);
 
     try {
       const res = await fetch(`${BASE_URL}/auth/forgot-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email: values.email }),
       });
 
       if (!res.ok) {
@@ -50,21 +96,17 @@ export default function ForgotPasswordPage() {
   };
 
   // Step 2: Verify OTP and Set New Password
-  const handleFinalReset = async (e: FormEvent) => {
-    e.preventDefault();
+  const handleFinalReset = async () => {
     setErrorMessage('');
-
-    if (password !== confirmPassword) {
-      setErrorMessage('Passwords do not match.');
-      return;
-    }
+    const isValid = await trigger(['email', 'otp', 'password', 'confirmPassword']);
+    if (!isValid) return;
 
     setIsLoading(true);
     try {
       const res = await fetch(`${BASE_URL}/auth/reset-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, otp, newPassword: password }),
+        body: JSON.stringify({ email: formData.email, otp: formData.otp, newPassword: formData.password }),
       });
 
       if (!res.ok) {
@@ -107,17 +149,16 @@ export default function ForgotPasswordPage() {
                 Enter your registered email address and we&apos;ll send you a verification code.
               </p>
 
-              <form className="mt-10 space-y-8 text-left" onSubmit={handleRequestReset}>
+              <form className="mt-10 space-y-8 text-left" onSubmit={handleSubmit(handleRequestReset)}>
                 <label className="block">
                   <span className="mb-2 block text-xs uppercase tracking-widest text-[#6a645a]">Email Address</span>
                   <input
                     type="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    {...register('email')}
                     className="w-full border-0 border-b border-[#ddd6c9] bg-transparent px-0 py-3 text-[15px] outline-none transition-colors duration-300 placeholder:text-[#b3ab9f] focus:border-[#C6A75E]"
                     placeholder="name@example.com"
                   />
+                  {errors.email && <p className="mt-1 text-xs text-[#9e4a45]">{errors.email.message}</p>}
                 </label>
 
                 {errorMessage && (
@@ -143,21 +184,20 @@ export default function ForgotPasswordPage() {
                 Verify Identity
               </h2>
               <p className="mt-4 text-sm text-[#5d564b]">
-                We sent a 6-digit code to <span className="text-[#1C1C1C] font-medium">{email}</span>
+                We sent a 6-digit code to <span className="text-[#1C1C1C] font-medium">{formData.email}</span>
               </p>
 
-              <form className="mt-10 space-y-6 text-left" onSubmit={handleFinalReset}>
+              <form className="mt-10 space-y-6 text-left" onSubmit={handleSubmit(handleFinalReset)}>
                 <label className="block">
                   <span className="mb-2 block text-xs uppercase tracking-widest text-[#6a645a]">Verification Code</span>
                   <input
                     type="text"
-                    required
                     maxLength={6}
-                    value={otp}
-                    onChange={(e) => setOtp(e.target.value)}
+                    {...register('otp')}
                     className="w-full border-0 border-b border-[#ddd6c9] bg-transparent px-0 py-3 text-[18px] tracking-[0.8em] outline-none focus:border-[#C6A75E]"
                     placeholder="000000"
                   />
+                  {errors.otp && <p className="mt-1 text-xs text-[#9e4a45]">{errors.otp.message}</p>}
                 </label>
 
                 <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
@@ -165,21 +205,19 @@ export default function ForgotPasswordPage() {
                     <span className="mb-2 block text-xs uppercase tracking-widest text-[#6a645a]">New Password</span>
                     <input
                       type="password"
-                      required
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
+                      {...register('password')}
                       className="w-full border-0 border-b border-[#ddd6c9] bg-transparent px-0 py-3 text-[15px] outline-none focus:border-[#C6A75E]"
                     />
+                    {errors.password && <p className="mt-1 text-xs text-[#9e4a45]">{errors.password.message}</p>}
                   </label>
                   <label className="block">
                     <span className="mb-2 block text-xs uppercase tracking-widest text-[#6a645a]">Confirm</span>
                     <input
                       type="password"
-                      required
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      {...register('confirmPassword')}
                       className="w-full border-0 border-b border-[#ddd6c9] bg-transparent px-0 py-3 text-[15px] outline-none focus:border-[#C6A75E]"
                     />
+                    {errors.confirmPassword && <p className="mt-1 text-xs text-[#9e4a45]">{errors.confirmPassword.message}</p>}
                   </label>
                 </div>
 

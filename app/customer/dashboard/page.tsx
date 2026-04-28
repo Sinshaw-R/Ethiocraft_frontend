@@ -10,12 +10,6 @@ import { ShoppingBag, Package, Heart, Settings } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/lib/auth-context'
-<<<<<<< HEAD
-import { getWishlistProductIds, toggleWishlistProduct } from '@/lib/wishlist'
-
-export default function CustomerDashboard() {
-  const { token } = useAuth()
-=======
 import { useCart } from '@/lib/cart-context'
 import { getWishlistProductIds, toggleWishlistProduct } from '@/lib/wishlist'
 import { toast } from 'react-toastify'
@@ -23,7 +17,6 @@ import { toast } from 'react-toastify'
 export default function CustomerDashboard() {
   const { token } = useAuth()
   const { addItem } = useCart()
->>>>>>> 8c3985f42246b5b83eab36049412039f6e100bf4
   const wishlistUserKey = token ?? 'guest'
   const recentOrders = [
     {
@@ -123,8 +116,6 @@ export default function CustomerDashboard() {
     setWishlistIds(ids)
     toast.info(`${productName} removed from wishlist`)
   }
-<<<<<<< HEAD
-=======
 
   const handleAddWishlistItemToCart = (item: (typeof catalogProducts)[number]) => {
     addItem({
@@ -137,7 +128,6 @@ export default function CustomerDashboard() {
     })
     toast.success(`${item.name} added to cart`)
   }
->>>>>>> 8c3985f42246b5b83eab36049412039f6e100bf4
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -284,15 +274,11 @@ export default function CustomerDashboard() {
                           <p className="text-sm text-muted-foreground">{item.artisan}</p>
                           <p className="text-lg font-bold text-secondary mt-2">${item.price}</p>
                           <div className="flex gap-2 mt-3">
-<<<<<<< HEAD
-  <Button size="sm" className="flex-1 bg-primary">
-=======
                             <Button
       size="sm"
       className="flex-1 bg-primary"
       onClick={() => handleAddWishlistItemToCart(item)}
     >
->>>>>>> 8c3985f42246b5b83eab36049412039f6e100bf4
       Add to Cart
     </Button>
     <Button size="sm" variant="outline" onClick={() => handleRemoveWishlistItem(item.id, item.name)}>

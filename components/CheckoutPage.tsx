@@ -1,30 +1,115 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import Link from 'next/link'
-import { MapPin, Phone, CreditCard, CheckCircle, Lock, Loader2 } from 'lucide-react'
+import { MapPin, Phone, CreditCard, CheckCircle, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { paymentService } from '@/lib/payment-service'
+import { useCart } from '@/lib/cart-context'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
 
 type CheckoutStep = 'shipping' | 'payment' | 'review' | 'confirmation'
+type OrderSummaryData = {
+  subtotal: number
+  shipping: number
+  tax: number
+  total: number
+  items: Array<{ name: string; qty: number; price: number }>
+}
+
+const checkoutFormSchema = z
+  .object({
+    email: z.string().email('Please enter a valid email'),
+    phone: z
+      .string()
+      .min(7, 'Phone number is required')
+      .regex(/^[+0-9\s-]+$/, 'Please enter a valid phone number'),
+    fullName: z.string().min(2, 'Full name is required'),
+    address: z.string().min(5, 'Address is required'),
+    city: z.string().min(2, 'City is required'),
+    region: z.string().min(2, 'Region is required'),
+    postalCode: z.string().min(2, 'Postal code is required'),
+    shippingMethod: z.enum(['standard', 'express']),
+    paymentMethod: z.enum(['chapa', 'telebirr', 'cod']),
+    cardNumber: z.string().optional(),
+    expiryDate: z.string().optional(),
+    cvv: z.string().optional(),
+    telebirrPhone: z.string().optional(),
+  })
+  .superRefine((values, ctx) => {
+    if (values.paymentMethod === 'chapa') {
+      if (!values.cardNumber || values.cardNumber.trim().length < 12) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['cardNumber'],
+          message: 'Card number is required',
+        })
+      }
+      if (!values.expiryDate || !/^\d{2}\/\d{2}$/.test(values.expiryDate.trim())) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['expiryDate'],
+          message: 'Use MM/YY format',
+        })
+      }
+      if (!values.cvv || !/^\d{3,4}$/.test(values.cvv.trim())) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['cvv'],
+          message: 'Enter a valid CVV',
+        })
+      }
+    }
+
+    if (values.paymentMethod === 'telebirr') {
+      if (!values.telebirrPhone || !/^[+0-9\s-]{7,}$/.test(values.telebirrPhone.trim())) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['telebirrPhone'],
+          message: 'TeleBirr phone number is required',
+        })
+      }
+    }
+  })
+
+type CheckoutFormData = z.infer<typeof checkoutFormSchema>
 
 export default function CheckoutPage() {
+  const { items: cartItems, cartTotal, clearCart } = useCart()
   const [currentStep, setCurrentStep] = useState<CheckoutStep>('shipping')
   const [isProcessing, setIsProcessing] = useState(false)
   const [orderNumber, setOrderNumber] = useState<string>('')
   const [paymentError, setPaymentError] = useState<string>('')
-  const [formData, setFormData] = useState({
-    email: '',
-    phone: '',
-    fullName: '',
-    address: '',
-    city: 'Hawassa',
-    region: 'SNNPR',
-    postalCode: '',
-    shippingMethod: 'standard',
-    paymentMethod: 'chapa',
+  const [confirmedOrderData, setConfirmedOrderData] = useState<OrderSummaryData | null>(null)
+
+  const {
+    register,
+    watch,
+    trigger,
+    formState: { errors },
+  } = useForm<CheckoutFormData>({
+    resolver: zodResolver(checkoutFormSchema),
+    mode: 'onBlur',
+    defaultValues: {
+      email: '',
+      phone: '',
+      fullName: '',
+      address: '',
+      city: 'Hawassa',
+      region: 'SNNPR',
+      postalCode: '',
+      shippingMethod: 'standard',
+      paymentMethod: 'chapa',
+      cardNumber: '',
+      expiryDate: '',
+      cvv: '',
+      telebirrPhone: '',
+    },
   })
 
+  const formData = watch()
   const steps = [
     { id: 'shipping', label: 'Shipping', icon: MapPin },
     { id: 'payment', label: 'Payment', icon: CreditCard },
@@ -32,25 +117,46 @@ export default function CheckoutPage() {
     { id: 'confirmation', label: 'Confirmation', icon: CheckCircle },
   ] as const
 
-  const orderData = {
-    subtotal: 6350,
-    shipping: 0,
-    tax: 952.5,
-    total: 7302.5,
-    items: [
-      { name: 'Hand-Woven Ethiopian Basket', qty: 1, price: 2850 },
-      { name: 'Traditional Ethiopian Coffee Roaster', qty: 2, price: 3500 },
-    ],
-  }
+  const shippingCost = formData.shippingMethod === 'express' ? 750 : 250
+  const orderData = useMemo(() => {
+    const subtotal = cartTotal
+    const tax = subtotal * 0.15
+    const total = subtotal + shippingCost + tax
+    const items = cartItems.map((item) => ({ name: item.name, qty: item.quantity, price: item.price }))
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target
-    setFormData((prev) => ({ ...prev, [name]: value }))
-  }
+    return { subtotal, shipping: shippingCost, tax, total, items }
+  }, [cartItems, cartTotal, shippingCost])
 
-  const handleNext = () => {
-    if (currentStep === 'shipping') setCurrentStep('payment')
-    else if (currentStep === 'payment') setCurrentStep('review')
+  const isCartEmpty = cartItems.length === 0
+  const summaryData = currentStep === 'confirmation' && confirmedOrderData ? confirmedOrderData : orderData
+
+  const handleNext = async () => {
+    if (isCartEmpty) return
+    if (currentStep === 'shipping') {
+      const isValid = await trigger([
+        'email',
+        'phone',
+        'fullName',
+        'address',
+        'city',
+        'region',
+        'postalCode',
+        'shippingMethod',
+      ])
+      if (!isValid) return
+      setCurrentStep('payment')
+    } else if (currentStep === 'payment') {
+      const paymentFields: Array<keyof CheckoutFormData> = ['paymentMethod']
+      if (formData.paymentMethod === 'chapa') {
+        paymentFields.push('cardNumber', 'expiryDate', 'cvv')
+      }
+      if (formData.paymentMethod === 'telebirr') {
+        paymentFields.push('telebirrPhone')
+      }
+      const isValid = await trigger(paymentFields)
+      if (!isValid) return
+      setCurrentStep('review')
+    }
     else if (currentStep === 'review') setCurrentStep('confirmation')
   }
 
@@ -60,6 +166,18 @@ export default function CheckoutPage() {
   }
 
   const handlePlaceOrder = async () => {
+    if (isCartEmpty) {
+      setPaymentError('Your cart is empty. Add items before placing an order.')
+      return
+    }
+
+    const isValid = await trigger()
+    if (!isValid) {
+      setPaymentError('Please complete all required checkout fields.')
+      if (currentStep !== 'shipping') setCurrentStep('shipping')
+      return
+    }
+
     setIsProcessing(true)
     setPaymentError('')
 
@@ -70,8 +188,11 @@ export default function CheckoutPage() {
       setOrderNumber(orderNum)
 
       // Calculate totals using payment service
-      const shippingCost = formData.shippingMethod === 'express' ? 750 : 250
       const totals = paymentService.calculateOrderTotal(orderData.subtotal, shippingCost)
+      const finalizedOrderData: OrderSummaryData = {
+        ...orderData,
+        total: totals.total,
+      }
 
       // Initialize payment based on selected method
       if (formData.paymentMethod === 'chapa' || formData.paymentMethod === 'telebirr') {
@@ -94,13 +215,17 @@ export default function CheckoutPage() {
             // window.location.href = paymentResponse.redirectUrl
           }
           // For demo, move to confirmation
+          setConfirmedOrderData(finalizedOrderData)
           setCurrentStep('confirmation')
+          clearCart()
         } else {
           setPaymentError(paymentResponse.errorMessage || 'Payment initialization failed')
         }
       } else if (formData.paymentMethod === 'cod') {
         // Cash on delivery - skip payment processing
+        setConfirmedOrderData(finalizedOrderData)
         setCurrentStep('confirmation')
+        clearCart()
       }
     } catch (error) {
       console.error('[v0] Payment error:', error)
@@ -180,23 +305,21 @@ export default function CheckoutPage() {
                         <label className="block text-sm font-medium text-foreground mb-2">Email</label>
                         <input
                           type="email"
-                          name="email"
-                          value={formData.email}
-                          onChange={handleInputChange}
+                          {...register('email')}
                           placeholder="you@example.com"
                           className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                         />
+                        {errors.email && <p className="mt-1 text-xs text-red-600">{errors.email.message}</p>}
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-foreground mb-2">Phone</label>
                         <input
                           type="tel"
-                          name="phone"
-                          value={formData.phone}
-                          onChange={handleInputChange}
+                          {...register('phone')}
                           placeholder="+251 900 123 456"
                           className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                         />
+                        {errors.phone && <p className="mt-1 text-xs text-red-600">{errors.phone.message}</p>}
                       </div>
                     </div>
                   </div>
@@ -209,57 +332,52 @@ export default function CheckoutPage() {
                         <label className="block text-sm font-medium text-foreground mb-2">Full Name</label>
                         <input
                           type="text"
-                          name="fullName"
-                          value={formData.fullName}
-                          onChange={handleInputChange}
+                          {...register('fullName')}
                           placeholder="John Doe"
                           className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                         />
+                        {errors.fullName && <p className="mt-1 text-xs text-red-600">{errors.fullName.message}</p>}
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-foreground mb-2">Street Address</label>
                         <input
                           type="text"
-                          name="address"
-                          value={formData.address}
-                          onChange={handleInputChange}
+                          {...register('address')}
                           placeholder="123 Main Street"
                           className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                         />
+                        {errors.address && <p className="mt-1 text-xs text-red-600">{errors.address.message}</p>}
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                           <label className="block text-sm font-medium text-foreground mb-2">Region</label>
                           <input
                             type="text"
-                            name="region"
-                            value={formData.region}
-                            onChange={handleInputChange}
+                            {...register('region')}
                             placeholder="SNNPR"
                             className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                           />
+                          {errors.region && <p className="mt-1 text-xs text-red-600">{errors.region.message}</p>}
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-foreground mb-2">City</label>
                           <input
                             type="text"
-                            name="city"
-                            value={formData.city}
-                            onChange={handleInputChange}
+                            {...register('city')}
                             placeholder="Hawassa"
                             className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                           />
+                          {errors.city && <p className="mt-1 text-xs text-red-600">{errors.city.message}</p>}
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-foreground mb-2">Postal Code</label>
                           <input
                             type="text"
-                            name="postalCode"
-                            value={formData.postalCode}
-                            onChange={handleInputChange}
+                            {...register('postalCode')}
                             placeholder="1000"
                             className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                           />
+                          {errors.postalCode && <p className="mt-1 text-xs text-red-600">{errors.postalCode.message}</p>}
                         </div>
                       </div>
                     </div>
@@ -276,10 +394,9 @@ export default function CheckoutPage() {
                         <label key={method.id} className="flex items-center p-4 border border-border rounded-lg cursor-pointer hover:bg-muted/50">
                           <input
                             type="radio"
-                            name="shippingMethod"
+                            {...register('shippingMethod')}
                             value={method.id}
                             checked={formData.shippingMethod === method.id}
-                            onChange={handleInputChange}
                             className="w-4 h-4 text-primary"
                           />
                           <div className="ml-4 grow">
@@ -294,10 +411,16 @@ export default function CheckoutPage() {
 
                 <Button
                   onClick={handleNext}
+                  disabled={isCartEmpty}
                   className="w-full mt-8 bg-primary text-primary-foreground hover:bg-primary/90 h-12 font-medium"
                 >
                   Continue to Payment
                 </Button>
+                {isCartEmpty && (
+                  <p className="mt-3 text-sm text-muted-foreground">
+                    Your cart is empty. <Link href="/products" className="text-primary underline">Browse products</Link> to continue.
+                  </p>
+                )}
               </div>
             )}
 
@@ -315,10 +438,9 @@ export default function CheckoutPage() {
                     <label key={method.id} className="flex items-center p-4 border-2 border-border rounded-lg cursor-pointer hover:bg-muted/50" style={{borderColor: formData.paymentMethod === method.id ? 'var(--primary)' : 'var(--border)'}}>
                       <input
                         type="radio"
-                        name="paymentMethod"
+                            {...register('paymentMethod')}
                         value={method.id}
                         checked={formData.paymentMethod === method.id}
-                        onChange={handleInputChange}
                         className="w-4 h-4 text-primary"
                       />
                       <method.icon className="w-5 h-5 ml-3 text-primary" />
@@ -326,6 +448,9 @@ export default function CheckoutPage() {
                     </label>
                   ))}
                 </div>
+                {errors.paymentMethod && (
+                  <p className="mb-4 text-xs text-red-600">{errors.paymentMethod.message}</p>
+                )}
 
                 {formData.paymentMethod === 'chapa' && (
                   <div className="bg-muted/50 rounded-lg p-6 mb-8 space-y-4">
@@ -334,26 +459,32 @@ export default function CheckoutPage() {
                       <label className="block text-sm font-medium text-foreground mb-2">Card Number</label>
                       <input
                         type="text"
+                        {...register('cardNumber')}
                         placeholder="1234 5678 9012 3456"
                         className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                       />
+                      {errors.cardNumber && <p className="mt-1 text-xs text-red-600">{errors.cardNumber.message}</p>}
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-foreground mb-2">Expiry Date</label>
                         <input
                           type="text"
+                          {...register('expiryDate')}
                           placeholder="MM/YY"
                           className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                         />
+                        {errors.expiryDate && <p className="mt-1 text-xs text-red-600">{errors.expiryDate.message}</p>}
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-foreground mb-2">CVV</label>
                         <input
                           type="text"
+                          {...register('cvv')}
                           placeholder="123"
                           className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                         />
+                        {errors.cvv && <p className="mt-1 text-xs text-red-600">{errors.cvv.message}</p>}
                       </div>
                     </div>
                   </div>
@@ -366,9 +497,11 @@ export default function CheckoutPage() {
                       <label className="block text-sm font-medium text-foreground mb-2">Phone Number</label>
                       <input
                         type="tel"
+                        {...register('telebirrPhone')}
                         placeholder="+251 900 123 456"
                         className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                       />
+                      {errors.telebirrPhone && <p className="mt-1 text-xs text-red-600">{errors.telebirrPhone.message}</p>}
                     </div>
                   </div>
                 )}
@@ -383,6 +516,7 @@ export default function CheckoutPage() {
                   </Button>
                   <Button
                     onClick={handleNext}
+                    disabled={isCartEmpty}
                     className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90 h-12 font-medium"
                   >
                     Review Order
@@ -444,7 +578,7 @@ export default function CheckoutPage() {
                   </Button>
                   <Button
                     onClick={handlePlaceOrder}
-                    disabled={isProcessing}
+                    disabled={isProcessing || isCartEmpty}
                     className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90 h-12 font-medium"
                   >
                     {isProcessing ? (
@@ -500,7 +634,7 @@ export default function CheckoutPage() {
               <h3 className="text-lg font-serif font-bold text-foreground">Order Summary</h3>
 
               <div className="space-y-3 pb-6 border-b border-border max-h-64 overflow-y-auto">
-                {orderData.items.map((item, idx) => (
+                {summaryData.items.map((item, idx) => (
                   <div key={idx} className="flex justify-between text-sm">
                     <span className="text-muted-foreground">{item.name}</span>
                     <span className="text-foreground font-medium">ETB {(item.price * item.qty).toLocaleString()}</span>
@@ -511,21 +645,21 @@ export default function CheckoutPage() {
               <div className="space-y-3 pb-6 border-b border-border">
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Subtotal</span>
-                  <span className="text-foreground font-medium">ETB {orderData.subtotal.toLocaleString()}</span>
+                  <span className="text-foreground font-medium">ETB {summaryData.subtotal.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Shipping</span>
-                  <span className="text-foreground font-medium">{orderData.shipping === 0 ? 'Free' : `ETB ${orderData.shipping}`}</span>
+                  <span className="text-foreground font-medium">{summaryData.shipping === 0 ? 'Free' : `ETB ${summaryData.shipping}`}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Tax</span>
-                  <span className="text-foreground font-medium">ETB {orderData.tax.toLocaleString()}</span>
+                  <span className="text-foreground font-medium">ETB {summaryData.tax.toLocaleString()}</span>
                 </div>
               </div>
 
               <div className="flex justify-between items-baseline">
                 <span className="text-foreground font-medium">Total</span>
-                <span className="text-2xl font-bold text-primary">ETB {orderData.total.toLocaleString()}</span>
+                <span className="text-2xl font-bold text-primary">ETB {summaryData.total.toLocaleString()}</span>
               </div>
             </div>
           </div>

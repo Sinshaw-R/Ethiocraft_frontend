@@ -128,7 +128,7 @@ export default function Home() {
                 <ArrowRight className="w-4 h-4" />
               </Button>
             </Link>
-            <Link href="/auth/register">
+            <Link href="/artisan/landing">
               <Button variant="outline" className="border-white text-white  hover:bg-white bg-transparent text-sm md:text-lg px-8 md:px-10 py-3 md:py-4">
                 Become an Artisan
               </Button>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useLayoutEffect, useRef } from 'react'
 import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { ArrowRight } from 'lucide-react'
@@ -14,29 +14,52 @@ export function StorySection() {
   const sectionRef = useRef<HTMLElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const panelsRef = useRef<(HTMLDivElement | null)[]>([])
+  const setPanelRef = (index: number) => (el: HTMLDivElement | null): void => {
+    panelsRef.current[index] = el
+  }
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const ctx = gsap.context(() => {
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        return
+      }
+
+      const section = sectionRef.current
+      const container = containerRef.current
       const panels = panelsRef.current
-      const totalPanels = panels.length
+      const panel1 = panels[0]
+      const panel2 = panels[1]
+      const panel3 = panels[2]
+      const panel5 = panels[4]
+
+      if (!section || !container || !panel1 || !panel2 || !panel3 || !panel5) {
+        return
+      }
+      const q = gsap.utils.selector(section)
 
       // Main horizontal scroll animation
-      const scrollTween = gsap.to(containerRef.current, {
-        x: () => -(containerRef.current!.scrollWidth - window.innerWidth),
+      const scrollTween = gsap.to(container, {
+        x: () => {
+          return -(container.scrollWidth - window.innerWidth)
+        },
         ease: 'none',
         scrollTrigger: {
-          trigger: sectionRef.current,
+          trigger: section,
           pin: true,
           scrub: 1,
-          end: () => `+=${containerRef.current!.scrollWidth - window.innerWidth}`,
+          anticipatePin: 1,
+          invalidateOnRefresh: true,
+          end: () => {
+            return `+=${container.scrollWidth - window.innerWidth}`
+          },
         },
       })
 
       // Panel 1: Parallax background
-      gsap.to('.panel-1-bg', {
+      gsap.to(q('.panel-1-bg'), {
         scale: 1.1,
         scrollTrigger: {
-          trigger: panels[0],
+          trigger: panel1,
           containerAnimation: scrollTween,
           start: 'left left',
           end: 'right left',
@@ -45,23 +68,23 @@ export function StorySection() {
       })
 
       // Panel 2: Image reveal and text stagger
-      gsap.from('.panel-2-img', {
+      gsap.from(q('.panel-2-img'), {
         clipPath: 'inset(0% 100% 0% 0%)',
         duration: 1.5,
         ease: 'power2.out',
         scrollTrigger: {
-          trigger: panels[1],
+          trigger: panel2,
           containerAnimation: scrollTween,
           start: 'left center',
         },
       })
 
-      gsap.from('.panel-2-text > *', {
+      gsap.from(q('.panel-2-text > *'), {
         y: 50,
         opacity: 0,
         stagger: 0.2,
         scrollTrigger: {
-          trigger: panels[1],
+          trigger: panel2,
           containerAnimation: scrollTween,
           start: 'left center',
         },
@@ -70,32 +93,32 @@ export function StorySection() {
       // Panel 3: Meet the Makers animation sequence
       const tl3 = gsap.timeline({
         scrollTrigger: {
-          trigger: panels[2],
+          trigger: panel3,
           containerAnimation: scrollTween,
           start: 'left center',
         },
       })
 
-      tl3.from('.panel-3-title', {
+      tl3.from(q('.panel-3-title'), {
         y: 30,
         opacity: 0,
         duration: 0.8,
         ease: 'power2.out',
       })
-      .from('.panel-3-main-img', {
+      .from(q('.panel-3-main-img'), {
         scale: 0.9,
         opacity: 0,
         duration: 1,
         ease: 'power2.out',
       }, '-=0.4')
-      .from('.panel-3-main-text > *', {
+      .from(q('.panel-3-main-text > *'), {
         y: 30,
         opacity: 0,
         stagger: 0.2,
         duration: 0.8,
         ease: 'power2.out',
       }, '-=0.6')
-      .from('.secondary-artisan', {
+      .from(q('.secondary-artisan'), {
         y: 20,
         opacity: 0,
         stagger: 0.2,
@@ -104,12 +127,33 @@ export function StorySection() {
       }, '-=0.6')
 
       // Panel 5: Split reveal
-      gsap.from('.split-left', { xPercent: -50, opacity: 0, scrollTrigger: { trigger: panels[4], containerAnimation: scrollTween, start: 'left center' } })
-      gsap.from('.split-right', { xPercent: 50, opacity: 0, scrollTrigger: { trigger: panels[4], containerAnimation: scrollTween, start: 'left center' } })
+      gsap.from(q('.split-left'), {
+        xPercent: -50,
+        opacity: 0,
+        scrollTrigger: { trigger: panel5, containerAnimation: scrollTween, start: 'left center' },
+      })
+      gsap.from(q('.split-right'), {
+        xPercent: 50,
+        opacity: 0,
+        scrollTrigger: { trigger: panel5, containerAnimation: scrollTween, start: 'left center' },
+      })
 
     }, sectionRef)
 
-    return () => ctx.revert()
+    return () => {
+      const section = sectionRef.current
+      ScrollTrigger.getAll().forEach((trigger) => {
+        const triggerElement = trigger.vars.trigger
+        if (
+          section &&
+          triggerElement instanceof Element &&
+          (triggerElement === section || section.contains(triggerElement))
+        ) {
+          trigger.kill(true)
+        }
+      })
+      ctx.revert()
+    }
   }, [])
 
   return (
@@ -121,7 +165,7 @@ export function StorySection() {
       >
         {/* Panel 1 — Opening (Heritage) */}
         <div 
-          ref={(el) => (panelsRef.current[0] = el)}
+          ref={setPanelRef(0)}
           className="relative w-screen h-full flex items-center justify-center overflow-hidden"
         >
           <div 
@@ -138,7 +182,7 @@ export function StorySection() {
 
         {/* Panel 2 — Craft Process */}
         <div 
-          ref={(el) => (panelsRef.current[1] = el)}
+          ref={setPanelRef(1)}
           className="w-screen h-full flex items-center px-8 md:px-24 bg-white"
         >
           <div className="grid grid-cols-1 md:grid-cols-2 gap-16 items-center w-full">
@@ -162,7 +206,7 @@ export function StorySection() {
 
         {/* Panel 3 — Artisan Story */}
        <div 
-         ref={(el) => (panelsRef.current[2] = el)}
+         ref={setPanelRef(2)}
          className="w-screen h-full flex flex-col justify-center px-12 bg-[#FAFAF9]"
        >
 
@@ -202,7 +246,13 @@ export function StorySection() {
         <div key={role} className="secondary-artisan flex items-center gap-6">
 
           <div className="w-20 h-20 bg-muted overflow-hidden">
-            <img src={`/placeholder.svg?text=${role}`} />
+            <Image
+              src={`/placeholder.svg?text=${role}`}
+              alt={`${role} portrait`}
+              width={80}
+              height={80}
+              className="h-full w-full object-cover"
+            />
           </div>
 
           <div>
@@ -224,7 +274,7 @@ export function StorySection() {
 
         {/* Panel 4 — Culture */}
         <div 
-          ref={(el) => (panelsRef.current[3] = el)}
+          ref={setPanelRef(3)}
           className="relative w-screen h-full flex items-center justify-center overflow-hidden"
         >
           <div 
@@ -241,7 +291,7 @@ export function StorySection() {
 
         {/* Panel 5 — Modern Bridge */}
         <div 
-          ref={(el) => (panelsRef.current[4] = el)}
+          ref={setPanelRef(4)}
           className="w-screen h-full flex items-center bg-white overflow-hidden"
         >
           <div className="grid grid-cols-1 md:grid-cols-2 h-full w-full">
@@ -276,7 +326,7 @@ export function StorySection() {
 
         {/* Panel 6 — CTA (Final) */}
         <div 
-          ref={(el) => (panelsRef.current[5] = el)}
+          ref={setPanelRef(5)}
           className="w-screen h-full flex flex-col items-center justify-center bg-[#1C1C1C] text-white space-y-12"
          >
           <div className="space-y-4 text-center">

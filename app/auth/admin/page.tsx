@@ -11,31 +11,44 @@ import { Label } from '@/components/ui/label'
 import { Card } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { AlertCircle, Shield } from 'lucide-react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
 
 type AdminRole = 'agent' | 'admin'
+const adminLoginSchema = z.object({
+  email: z.string().email('Please enter a valid email'),
+  employeeId: z.string().min(1, 'Employee ID is required'),
+  password: z.string().min(1, 'Password is required'),
+})
+
+type AdminLoginFormData = z.infer<typeof adminLoginSchema>
 
 export default function AdminLoginPage() {
   const [role, setRole] = useState<AdminRole>('agent')
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [employeeId, setEmployeeId] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<AdminLoginFormData>({
+    resolver: zodResolver(adminLoginSchema),
+    defaultValues: {
+      email: '',
+      employeeId: '',
+      password: '',
+    },
+  })
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleLogin = async (values: AdminLoginFormData) => {
     setError('')
-
-    if (!employeeId.trim()) {
-      setError('Employee ID is required')
-      return
-    }
 
     setIsLoading(true)
 
     // Simulate login with additional security check
     setTimeout(() => {
-      console.log(`Admin login attempt: ${email}, Role: ${role}, Employee ID: ${employeeId}`)
+      console.log(`Admin login attempt: ${values.email}, Role: ${role}, Employee ID: ${values.employeeId}`)
       setIsLoading(false)
 
       // Redirect based on role
@@ -100,7 +113,7 @@ export default function AdminLoginPage() {
             </div>
 
             {/* Form */}
-            <form onSubmit={handleLogin} className="space-y-4">
+            <form onSubmit={handleSubmit(handleLogin)} className="space-y-4">
               {/* Email */}
               <div className="space-y-2">
                 <Label htmlFor="email" className="font-aeonik">Email Address</Label>
@@ -108,10 +121,9 @@ export default function AdminLoginPage() {
                   id="email"
                   type="email"
                   placeholder="staff@ethiopian-handcraft.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
+                  {...register('email')}
                 />
+                {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
               </div>
 
               {/* Employee ID */}
@@ -121,10 +133,9 @@ export default function AdminLoginPage() {
                   id="employeeId"
                   type="text"
                   placeholder="EMP-0001"
-                  value={employeeId}
-                  onChange={(e) => setEmployeeId(e.target.value)}
-                  required
+                  {...register('employeeId')}
                 />
+                {errors.employeeId && <p className="text-xs text-destructive">{errors.employeeId.message}</p>}
               </div>
 
               {/* Password */}
@@ -139,10 +150,9 @@ export default function AdminLoginPage() {
                   id="password"
                   type="password"
                   placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
+                  {...register('password')}
                 />
+                {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
               </div>
 
               {/* Submit Button */}

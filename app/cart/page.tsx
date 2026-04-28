@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 import { Header } from '@/components/shared/header';
 import { Footer } from '@/components/shared/footer';
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import ChatSupport from '@/components/ChatSupport';
 import { useCart } from '@/lib/cart-context';
@@ -15,38 +15,44 @@ export default function App() {
   const { items, updateQuantity: updateCartQuantity, removeItem: removeCartItem } = useCart();
   const [leavingIds, setLeavingIds] = useState<number[]>([]);
   const [quantityPulseId, setQuantityPulseId] = useState<number | null>(null);
-  const [couponCode, setCouponCode] = useState('');
-  const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
+  const timeoutIdsRef = useRef<number[]>([]);
+  const TAX_RATE = 0.15;
 
   const subtotal = useMemo(
     () => items.reduce((total, item) => total + item.price * item.quantity, 0),
     [items],
   );
-  const discount = appliedCoupon ? subtotal * 0.1 : 0;
   const shipping = subtotal > 180 || subtotal === 0 ? 0 : 12;
-  const tax = (subtotal - discount) * 0.08;
-  const total = subtotal - discount + shipping + tax;
+  const tax = subtotal * TAX_RATE;
+  const total = subtotal + shipping + tax;
+
+  useEffect(() => {
+    return () => {
+      timeoutIdsRef.current.forEach((id) => window.clearTimeout(id));
+      timeoutIdsRef.current = [];
+    };
+  }, []);
 
   const updateQuantity = (id: number, nextQuantity: number) => {
     if (nextQuantity < 1) return;
     updateCartQuantity(id, nextQuantity);
     setQuantityPulseId(id);
-    window.setTimeout(() => setQuantityPulseId((active) => (active === id ? null : active)), 220);
+    const timeoutId = window.setTimeout(() => {
+      setQuantityPulseId((active) => (active === id ? null : active));
+      timeoutIdsRef.current = timeoutIdsRef.current.filter((existingId) => existingId !== timeoutId);
+    }, 220);
+    timeoutIdsRef.current.push(timeoutId);
   };
 
   const removeItem = (id: number, name: string) => {
     setLeavingIds((current) => (current.includes(id) ? current : [...current, id]));
-    window.setTimeout(() => {
+    const timeoutId = window.setTimeout(() => {
       removeCartItem(id);
       setLeavingIds((current) => current.filter((itemId) => itemId !== id));
       toast.info(`${name} removed from cart`);
+      timeoutIdsRef.current = timeoutIdsRef.current.filter((existingId) => existingId !== timeoutId);
     }, 360);
-  };
-
-  const applyPromoCode = () => {
-    if (couponCode.trim().toUpperCase() !== 'WELCOME10') return;
-    setAppliedCoupon('WELCOME10');
-    setCouponCode('');
+    timeoutIdsRef.current.push(timeoutId);
   };
 
   const emptyState = items.length === 0;
@@ -73,7 +79,7 @@ export default function App() {
         </header>
 
         {emptyState ? (
-          <section className="flex min-h-[58vh] flex-col items-center justify-center text-center">
+          <section key="cart-empty" className="flex min-h-[58vh] flex-col items-center justify-center text-center">
             <div className="text-6xl text-[#c7c0b2]">🧺</div>
             <h2
               className="font-druk-medium mt-5 text-2xl uppercase tracking-[0.05em]"
@@ -91,7 +97,7 @@ export default function App() {
             </Link>
           </section>
         ) : (
-          <section className="mt-10 grid grid-cols-1 gap-12 lg:grid-cols-12 lg:gap-14">
+          <section key="cart-populated" className="mt-10 grid grid-cols-1 gap-12 lg:grid-cols-12 lg:gap-14">
             <div className="lg:col-span-8">
               <ul className="divide-y divide-[#ece6da]">
                 {items.map((item) => {
@@ -173,43 +179,15 @@ export default function App() {
                   Order Summary
                 </h2>
 
-                <div className="font-aeonik mt-7 border-t border-[#e7e1d6] pt-6">
-                  <label htmlFor="promo" className="text-xs uppercase tracking-[0.1em] text-[#6d665c]">
-                    Promo Code
-                  </label>
-                  <div className="mt-3 flex items-center gap-2">
-                    <input
-                      id="promo"
-                      value={couponCode}
-                      onChange={(event) => setCouponCode(event.target.value)}
-                      placeholder="Enter code"
-                      className="h-11 w-full border-b border-[#d8d1c3] bg-transparent px-1 text-sm outline-none placeholder:text-[#9f998f] focus:border-[#C6A75E]"
-                    />
-                    <button
-                      onClick={applyPromoCode}
-                      className="h-11 px-3 text-xs uppercase tracking-[0.08em] text-[#1C1C1C] transition-colors hover:text-[#C6A75E]"
-                    >
-                      Apply
-                    </button>
-                  </div>
-                  {appliedCoupon ? <p className="mt-2 text-xs text-[#5d7e4a]">WELCOME10 applied</p> : null}
-                </div>
-
                 <dl className="font-aeonik mt-7 space-y-3 text-sm">
                   <div className="flex items-center justify-between">
                     <dt className="text-[#656056]">Subtotal</dt>
                     <dd>${subtotal.toFixed(2)}</dd>
                   </div>
-                  {discount > 0 ? (
-                    <div className="flex items-center justify-between text-[#5d7e4a]">
-                      <dt>Discount</dt>
-                      <dd>- ${discount.toFixed(2)}</dd>
-                    </div>
-                  ) : null}
-                  <div className="flex items-center justify-between">
+                  {/* <div className="flex items-center justify-between">
                     <dt className="text-[#656056]">Shipping</dt>
                     <dd>{shipping === 0 ? 'Free' : `$${shipping.toFixed(2)}`}</dd>
-                  </div>
+                  </div> */}
                   <div className="flex items-center justify-between">
                     <dt className="text-[#656056]">Tax</dt>
                     <dd>${tax.toFixed(2)}</dd>

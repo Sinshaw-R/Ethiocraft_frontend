@@ -1,147 +1,202 @@
 "use client";
-import { cn } from '@/lib/utils';
+
+import { useState } from 'react';
 import { Header } from '@/components/shared/header';
 import { Footer } from '@/components/shared/footer';
-import { FormEvent, useEffect, useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 
-export default function App() {
-  const [isReady, setIsReady] = useState(false);
-  const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+const registerSchema = z.object({
+  fullName: z.string().min(2, 'Full name is required'),
+  email: z.string().email('Please enter a valid email'),
+  password: z.string().min(8, 'Password must be at least 8 characters'),
+  confirmPassword: z.string().min(8, 'Password must be at least 8 characters'),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords do not match",
+  path: ["confirmPassword"],
+});
 
-  useEffect(() => {
-    setIsReady(true);
-  }, []); 
+type RegisterFormData = z.infer<typeof registerSchema>;
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    // Placeholder action for demo usage.
-    console.log('Create account', { fullName, email, password });
+export default function RegisterPage() {
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<RegisterFormData>({
+    resolver: zodResolver(registerSchema),
+    defaultValues: {
+      fullName: '',
+      email: '',
+      password: '',
+      confirmPassword: '',
+    },
+  });
+
+  const onSubmit = (values: RegisterFormData) => {
+    console.log('Account creation successful:', values);
   };
 
   return (
-    <div className="min-h-screen bg-[#FAFAF9] text-[#1C1C1C] font-inter">
-      <Header />
-      <main className="grid min-h-[calc(100vh-80px)] grid-cols-1 md:grid-cols-2 pt-20 md:pt-24 items-start">
-        <section className="sticky top-24 hidden h-[calc(100vh-6rem)] overflow-hidden md:block">
-          <img
-            src="https://images.unsplash.com/photo-1576678927484-cc907957088c?auto=format&fit=crop&w=1400&q=80"
-            alt="Ethiopian artisan weaving textile"
-            className="h-full w-full object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/25 to-transparent" />
-          <div className="absolute bottom-10 left-10 max-w-[30ch] text-[#FAFAF9]">
-            <h1
-              className="font-druk-medium text-4xl uppercase tracking-[0.04em]"
-            >
-              Crafted for You
-            </h1>
-            <p className="mt-4 text-sm leading-relaxed text-[#f1eee8]">
-              Discover authentic handmade pieces rooted in Ethiopian tradition
-            </p>
-          </div>
-        </section>
+    <div className="relative min-h-screen w-full overflow-hidden text-[#1C1C1C] font-inter flex flex-col">
+      {/* Blurred Background Layer (Warm & Natural) */}
+      <div 
+        className="absolute inset-0 bg-cover bg-center blur-2xl scale-105"
+        style={{ 
+          backgroundImage: `url('https://i.pinimg.com/1200x/e2/2a/1b/e22a1b62d41b56adfdab68776d40e56f.jpg')`
+        }}
+      />
+      {/* Warm Overlay to add the requested temperature */}
+      {/* <div className="absolute inset-0 bg-[#fdf2e9]/80" /> */}
 
-        <section className="flex items-center px-6 py-12 sm:px-10 md:px-14 lg:px-20">
+      {/* Main Content */}
+      <div className="relative z-10 flex flex-col min-h-screen">
+        <Header />
+
+        <main className="flex-grow flex items-center justify-center p-4 md:p-8 pt-24 md:pt-28">
           <div
-            className="w-full max-w-[460px]"
-            style={{
-              opacity: isReady ? 1 : 0,
-              transform: isReady ? 'translateY(0)' : 'translateY(14px)',
-              transition: 'opacity 450ms ease, transform 450ms ease',
-            }}
+            className="w-full max-w-[1400px] min-h-[650px] bg-white/70 backdrop-blur-md rounded-[2.5rem] shadow-2xl flex flex-col md:flex-row overflow-hidden relative border border-white/50"
+            style={{ transition: 'opacity 250ms ease, transform 250ms ease' }}
           >
-            <p
-              className="font-aeonik text-xs uppercase tracking-[0.14em] text-[#7a7368]"
-            >
-              Ethiopian Crafted Marketplace
-            </p>
-            <h2
-              className="font-druk-medium mt-4 text-3xl uppercase tracking-[0.04em] md:text-4xl"
-            >
-              Create Your Account
-            </h2>
-            <p className="mt-3 text-sm text-[#5d564b]">Start exploring handcrafted pieces</p>
+            {/* Left Column - Form */}
+            <section className="w-full md:w-1/2 p-8 md:p-14 flex flex-col justify-between relative z-10">
+              <div>
+                <div className="font-aeonik inline-block border border-gray-400 rounded-full px-5 py-1.5 text-sm text-gray-700 mb-12">
+                  EthioCraft
+                </div>
 
-            <form className="mt-10 space-y-6" onSubmit={handleSubmit}>
-              <label className="block text-sm">
-                <span className="mb-2 block text-[#6a645a]">Full Name</span>
-                <input
-                  type="text"
-                  required
-                  value={fullName}
-                  onChange={(event) => setFullName(event.target.value)}
-                  className="w-full border-0 border-b border-[#ddd6c9] bg-transparent px-0 py-2 text-[15px] outline-none transition-colors duration-300 placeholder:text-[#b3ab9f] focus:border-[#C6A75E]"
-                  placeholder="Alemayehu Bekele"
+                <div className="mb-8">
+                  <h1 className="font-druk-medium uppercase tracking-[0.04em] text-3xl md:text-[2.25rem] mb-2 leading-tight">
+                    Create Your Account
+                  </h1>
+                  <p className="font-aeonik text-sm text-gray-600">
+                    Start exploring handcrafted pieces
+                  </p>
+                </div>
+
+                <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
+                  <div>
+                    <label className="font-aeonik block text-xs text-gray-600 mb-1.5 ml-4">Full Name</label>
+                    <input
+                      type="text"
+                      {...register('fullName')}
+                      className="w-full bg-white/50 border border-white focus:border-[#d9d2c7] focus:bg-white rounded-full px-5 py-3.5 text-sm outline-none transition-all placeholder:text-gray-400 shadow-sm"
+                      placeholder="Alemayehu Bekele"
+                    />
+                    {errors.fullName && <p className="font-aeonik mt-1 ml-4 text-xs text-red-600">{errors.fullName.message}</p>}
+                  </div>
+
+                  <div>
+                    <label className="font-aeonik block text-xs text-gray-600 mb-1.5 ml-4">Email</label>
+                    <input
+                      type="email"
+                      {...register('email')}
+                      className="w-full bg-white/50 border border-white focus:border-[#d9d2c7] focus:bg-white rounded-full px-5 py-3.5 text-sm outline-none transition-all placeholder:text-gray-400 shadow-sm"
+                      placeholder="you@example.com"
+                    />
+                    {errors.email && <p className="font-aeonik mt-1 ml-4 text-xs text-red-600">{errors.email.message}</p>}
+                  </div>
+
+                  {/* Password Field */}
+                  <div className="relative">
+                    <label className="font-aeonik block text-xs text-gray-600 mb-1.5 ml-4">Password</label>
+                    <div className="relative">
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        {...register('password')}
+                        className="w-full bg-white/50 border border-white focus:border-[#d9d2c7] focus:bg-white rounded-full px-5 py-3.5 text-sm outline-none transition-all placeholder:text-gray-400 shadow-sm pr-12"
+                        placeholder="••••••••"
+                      />
+                      <button 
+                        type="button" 
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-800"
+                      >
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          {showPassword ? <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" /> : <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />}
+                          {!showPassword && <circle cx="12" cy="12" r="3" />}
+                        </svg>
+                      </button>
+                    </div>
+                    {errors.password && <p className="font-aeonik mt-1 ml-4 text-xs text-red-600">{errors.password.message}</p>}
+                  </div>
+
+                  {/* Confirm Password Field */}
+                  <div className="relative">
+                    <label className="font-aeonik block text-xs text-gray-600 mb-1.5 ml-4">Confirm Password</label>
+                    <div className="relative">
+                      <input
+                        type={showConfirmPassword ? 'text' : 'password'}
+                        {...register('confirmPassword')}
+                        className="w-full bg-white/50 border border-white focus:border-[#d9d2c7] focus:bg-white rounded-full px-5 py-3.5 text-sm outline-none transition-all placeholder:text-gray-400 shadow-sm pr-12"
+                        placeholder="••••••••"
+                      />
+                      <button 
+                        type="button" 
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-800"
+                      >
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          {showConfirmPassword ? <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" /> : <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />}
+                          {!showConfirmPassword && <circle cx="12" cy="12" r="3" />}
+                        </svg>
+                      </button>
+                    </div>
+                    {errors.confirmPassword && <p className="font-aeonik mt-1 ml-4 text-xs text-red-600">{errors.confirmPassword.message}</p>}
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="font-aeonik w-full bg-[#1C1C1C] text-[#FAFAF9] hover:opacity-90 rounded-full px-5 py-3.5 mt-6 text-sm transition-all duration-300 shadow-sm"
+                  >
+                    Create Account
+                  </button>
+                </form>
+
+                <div className="mt-8 border-t border-gray-300 pt-6">
+                   <p className="font-aeonik text-sm text-gray-700 mb-2">Are you an artisan?</p>
+                   <a
+                     href="/artisan/landing"
+                     className="font-aeonik group inline-flex items-center gap-1 text-[#1C1C1C] hover:opacity-70 transition-opacity"
+                   >
+                     Start selling your craft
+                     <span className="transition-transform duration-300 group-hover:translate-x-1">→</span>
+                   </a>
+                </div>
+              </div>
+
+              <div className="font-aeonik flex justify-between items-center mt-12 text-xs text-gray-600">
+                <p>
+                  Already have an account?{' '}
+                  <a href="/auth/login" className="font-medium text-[#1C1C1C] hover:underline">Sign in</a>
+                </p>
+                <a href="#" className="hover:underline">Terms & Conditions</a>
+              </div>
+            </section>
+
+            {/* Right Column - Image */}
+            <section className="hidden md:block md:w-1/2 relative p-4 pl-0">
+              <div className="w-full h-full relative rounded-[2rem] overflow-hidden">
+                <img
+                  src="https://i.pinimg.com/736x/19/1f/aa/191faa6fe3040fcbde17c6782e2b81bd.jpg"
+                  alt="Ethiopian artisan weaving textile"
+                  className="absolute inset-0 w-full h-full object-cover"
                 />
-              </label>
-
-              <label className="block text-sm">
-                <span className="mb-2 block text-[#6a645a]">Email</span>
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  className="w-full border-0 border-b border-[#ddd6c9] bg-transparent px-0 py-2 text-[15px] outline-none transition-colors duration-300 placeholder:text-[#b3ab9f] focus:border-[#C6A75E]"
-                  placeholder="you@example.com"
-                />
-              </label>
-
-              <label className="block text-sm">
-                <span className="mb-2 block text-[#6a645a]">Password</span>
-                <input
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  className="w-full border-0 border-b border-[#ddd6c9] bg-transparent px-0 py-2 text-[15px] outline-none transition-colors duration-300 placeholder:text-[#b3ab9f] focus:border-[#C6A75E]"
-                  placeholder="At least 8 characters"
-                />
-              </label>
-
-              <button
-                type="submit"
-                className="mt-2 w-full bg-[#1C1C1C] px-4 py-3 text-sm text-[#FAFAF9] transition-opacity duration-300 hover:opacity-90"
-                // Removed inline style, font-aeonik is applied via global layout
-              >
-                Create Account
-              </button>
-            </form>
-
-            <p className="mt-6 text-sm text-[#5d564b]">
-              Already have an account?{' '}
-              <a href="#" className="underline decoration-[#d2c7b5] underline-offset-4 hover:text-[#1C1C1C]">
-                Sign in
-              </a>
-            </p>
-
-            <div className="mt-10 border-t border-[#e8e1d4] pt-6 text-sm text-[#6a645a]">
-              Are you an artisan?{' '}
-              <a
-                href="/auth/register/artisan"
-                className="font-aeonik group inline-flex items-center gap-1 text-[#C6A75E] transition-colors hover:text-[#b1924e]"
-              >
-                Start selling your craft
-                <span className="transition-transform duration-300 group-hover:translate-x-1">→</span>
-              </a>
-            </div>
+              </div>
+            </section>
           </div>
-        </section>
-      </main>
-      <Footer />
+        </main>
+        <Footer />
+      </div>
 
       <style jsx>{`
-        .font-druk-medium {
-          font-family: var(--font-druk-medium), sans-serif;
-        }
-        .font-aeonik {
-          font-family: var(--font-aeonik), sans-serif;
-        }
-        .font-inter {
-          font-family: var(--font-inter), sans-serif;
-        }
+        .font-druk-medium { font-family: var(--font-druk-medium), sans-serif; }
+        .font-aeonik      { font-family: var(--font-aeonik), sans-serif; }
+        .font-inter       { font-family: var(--font-inter), sans-serif; }
       `}</style>
     </div>
   );

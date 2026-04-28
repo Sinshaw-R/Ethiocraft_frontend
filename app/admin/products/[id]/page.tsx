@@ -26,13 +26,6 @@ type ReviewItem = {
   hidden?: boolean;
 };
 
-const unsplashPlaceholders = [
-  'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=1400&q=80',
-  'https://images.unsplash.com/photo-1603252109303-2751441dd157?auto=format&fit=crop&w=1400&q=80',
-  'https://images.unsplash.com/photo-1612423284934-2850a4ea6b0f?auto=format&fit=crop&w=1400&q=80',
-  'https://images.unsplash.com/photo-1620799139834-6b8f844fbe2f?auto=format&fit=crop&w=1400&q=80',
-];
-
 const tabs: TabKey[] = ['Details', 'Verification', 'Reviews', 'Activity'];
 
 export default function App() {
@@ -57,7 +50,10 @@ export default function App() {
       setLoading(true);
       try {
         const base = (process.env.NEXT_PUBLIC_BASE_URL ?? '').replace(/\/$/, '') || 'http://localhost:4000/api/v1';
-        const res = await fetch(`${base}/marketplace/products/${id}`);
+        const token = localStorage.getItem('token');
+        const res = await fetch(`${base}/admin/products/${id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
         if (!res.ok) throw new Error(`Error: ${res.status}`);
         const json = await res.json();
         const data = json.data;
@@ -73,7 +69,12 @@ export default function App() {
           stock: data.stock?.toString() || '0',
           price: data.price?.toString() || '0',
         });
-        setReviews(data.reviews || []);
+        setReviews((data.reviews || []).map((review: any) => ({
+          id: review.id,
+          author: `${review.customer?.firstName || ''} ${review.customer?.lastName || ''}`.trim() || 'Unknown',
+          rating: review.rating,
+          text: review.comment || '',
+        })));
       } catch (err: any) {
         console.error(err);
         setError(err.message);
@@ -90,19 +91,12 @@ export default function App() {
       if (m.url.startsWith('http') || m.url.startsWith('data:')) return m.url;
       return `${base}${m.url}`;
     });
-    const combined = [...apiImages];
-    while (combined.length < 4) {
-      combined.push(unsplashPlaceholders[combined.length]);
-    }
-    return combined;
+    return apiImages;
   }, [productData]);
 
   const longDescription = productData?.description || 'Not found';
 
-  const riskAlerts = [
-    { id: 'AL-1', text: 'Reported by 2 users in the last 7 days', tone: 'warning' },
-    { id: 'AL-2', text: 'Engagement down 14% this month', tone: 'warning' },
-  ];
+  const riskAlerts = Array.isArray(productData?.riskAlerts) ? productData.riskAlerts : [];
 
   const showToast = (message: string) => {
     setToast(message);
@@ -229,11 +223,17 @@ export default function App() {
               </div>
 
               <div className="group overflow-hidden rounded-2xl bg-[#f3ede2]">
-                <img
-                  src={gallery[selectedImage]}
-                  alt="Product media"
-                  className="h-[460px] w-full object-cover transition duration-300 group-hover:scale-[1.03]"
-                />
+                {gallery.length > 0 ? (
+                  <img
+                    src={gallery[selectedImage]}
+                    alt="Product media"
+                    className="h-[460px] w-full object-cover transition duration-300 group-hover:scale-[1.03]"
+                  />
+                ) : (
+                  <div className="flex h-[460px] w-full items-center justify-center text-sm text-[#766a5d]">
+                    No product images uploaded yet.
+                  </div>
+                )}
               </div>
 
               <div className="mt-3 grid grid-cols-4 gap-2">
@@ -259,7 +259,7 @@ export default function App() {
                 {showFullDescription ? longDescription : `${shortDescription}${longDescription.length > 230 ? '...' : ''}`}
               </p>
               <p className="mt-4 text-sm leading-7 text-[#5f5750]">
-                Cultural meaning: {productData?.culturalMetadata?.story || 'The heritage pattern reflects ceremonial identity and intergenerational skill.'}
+                Cultural meaning: {productData?.culturalMetadata?.story || 'Not provided'}
               </p>
               <div className="mt-4 flex gap-2">
                 <button
@@ -315,9 +315,9 @@ export default function App() {
               {activeTab === 'Verification' && (
                 <div className="space-y-4 text-sm">
                   {[
-                    { title: 'Digital submission', note: 'Images, story, and metadata completed.', done: true },
-                    { title: 'Agent verification', note: 'Verified by Hana Mulugeta on Jan 09, 2026.', done: true },
-                    { title: 'Final approval', note: 'Approved and published on Jan 10, 2026.', done: true },
+                    { title: 'Digital submission', note: productData?.verification?.submittedAt ? `Submitted on ${new Date(productData.verification.submittedAt).toLocaleDateString()}` : 'Not submitted yet.' },
+                    { title: 'Review', note: productData?.verification?.reviewedAt ? `Reviewed on ${new Date(productData.verification.reviewedAt).toLocaleDateString()}` : 'Not reviewed yet.' },
+                    { title: 'Publication', note: productData?.verification?.publishedAt ? `Published on ${new Date(productData.verification.publishedAt).toLocaleDateString()}` : 'Not published yet.' },
                   ].map((step, index) => (
                     <div key={step.title} className="relative rounded-2xl border border-neutral-200 p-4">
                       {index < 2 && <span className="absolute left-[18px] top-[52px] h-8 w-px bg-neutral-200" />}
@@ -332,7 +332,7 @@ export default function App() {
                   ))}
                   <div className="rounded-2xl border border-neutral-200 bg-[#faf8f4] p-3 text-xs text-[#6f6459]">
                     <p className="font-medium">Agent report</p>
-                    <p className="mt-1">Materials confirmed as hand-loomed cotton. Stitch quality and pattern consistency validated on site.</p>
+                    <p className="mt-1">{productData?.verification?.verificationNotes || 'No verification notes available.'}</p>
                   </div>
                   <button
                     onClick={() => showToast('Re-verification request sent')}
@@ -383,12 +383,7 @@ export default function App() {
 
               {activeTab === 'Activity' && (
                 <ol className="space-y-3 border-l border-neutral-200 pl-4 text-sm text-[#615851]">
-                  {[
-                    'Published by Admin Hana on Jan 10, 2026',
-                    'Price updated from $179.00 to $189.00 on Jan 14, 2026',
-                    'Featured toggle enabled on Jan 16, 2026',
-                    'Description edited by Admin Dawit on Jan 19, 2026',
-                  ].map((event) => (
+                  {(productData?.activity?.length ? productData.activity : ['No activity available yet.']).map((event: string) => (
                     <li key={event} className="relative">
                       <span className="absolute -left-[21px] top-1.5 h-2 w-2 rounded-full bg-[#C6A75E]" />
                       {event}
@@ -408,7 +403,9 @@ export default function App() {
                 <div className="mt-4 space-y-3 text-sm">
                   <div className="flex items-center justify-between">
                     <span>Status</span>
-                    <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-xs text-emerald-700">Live</span>
+                    <span className={`rounded-full border px-2 py-1 text-xs ${isVisible ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-neutral-200 bg-neutral-50 text-neutral-600'}`}>
+                      {isVisible ? 'Live' : 'Hidden'}
+                    </span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span>Visibility</span>
@@ -426,11 +423,9 @@ export default function App() {
                   Artisan
                 </h3>
                 <div className="mt-4 flex items-center gap-3">
-                  <img
-                    src={unsplashPlaceholders[0]}
-                    alt="Artisan"
-                    className="h-14 w-14 rounded-full object-cover"
-                  />
+                  <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#efe7d7] text-sm font-semibold text-[#8a6f3a]">
+                    {(productData?.artisan?.firstName?.[0] || '')}{(productData?.artisan?.lastName?.[0] || '')}
+                  </div>
                   <div>
                     <p className="font-medium text-[#8a6f3a]">{`${productData?.artisan?.firstName || ''} ${productData?.artisan?.lastName || ''}`.trim() || 'Not found'}</p>
                     <p className="text-xs text-[#6f655c]">{productData?.artisan?.artisanProfile?.shopName || 'Not found'}</p>
@@ -454,21 +449,21 @@ export default function App() {
                 <div className="mt-4 space-y-2 text-sm">
                   <p className="flex justify-between"><span>Price</span><span className="font-medium">{productData?.currency || 'ETB'} {details.price}</span></p>
                   <p className="flex justify-between"><span>Stock</span><span>{details.stock}</span></p>
-                  <p className="flex justify-between"><span>Sales</span><span>0</span></p>
-                  <p className="flex justify-between"><span>Revenue</span><span>{productData?.currency || 'ETB'} 0</span></p>
+                  <p className="flex justify-between"><span>Sales</span><span>{productData?.analytics?.totalUnitsSold ?? 0}</span></p>
+                  <p className="flex justify-between"><span>Revenue</span><span>{productData?.currency || 'ETB'} {(productData?.analytics?.totalRevenue ?? 0).toLocaleString()}</span></p>
                 </div>
                 <div className="mt-4 grid grid-cols-3 gap-2 text-center text-xs">
                   <div className="rounded-xl border border-neutral-200 p-2">
-                    <p className="text-[#7a7068]">Views</p>
-                    <p className="mt-1 font-semibold">8.4K</p>
+                    <p className="text-[#7a7068]">Order Items</p>
+                    <p className="mt-1 font-semibold">{productData?.analytics?.totalOrderItems ?? 0}</p>
                   </div>
                   <div className="rounded-xl border border-neutral-200 p-2">
-                    <p className="text-[#7a7068]">Conv.</p>
-                    <p className="mt-1 font-semibold">3.8%</p>
+                    <p className="text-[#7a7068]">Rating</p>
+                    <p className="mt-1 font-semibold">{productData?.analytics?.averageRating ?? '—'}</p>
                   </div>
                   <div className="rounded-xl border border-neutral-200 p-2">
-                    <p className="text-[#7a7068]">Wishlist</p>
-                    <p className="mt-1 font-semibold">312</p>
+                    <p className="text-[#7a7068]">Reviews</p>
+                    <p className="mt-1 font-semibold">{productData?.analytics?.totalReviews ?? 0}</p>
                   </div>
                 </div>
               </article>
@@ -517,10 +512,10 @@ export default function App() {
                     Alerts
                   </h3>
                   <div className="mt-4 space-y-2">
-                    {riskAlerts.map((alert) => (
-                      <div key={alert.id} className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                    {riskAlerts.map((alert: string, index: number) => (
+                      <div key={`${alert}-${index}`} className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
                         <AlertTriangle className="mt-0.5 h-3.5 w-3.5" />
-                        <span>{alert.text}</span>
+                        <span>{alert}</span>
                       </div>
                     ))}
                   </div>

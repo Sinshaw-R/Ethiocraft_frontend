@@ -43,6 +43,7 @@ export default function App() {
   const [toast, setToast] = useState('');
   const [details, setDetails] = useState<any>({});
   const [reviews, setReviews] = useState<ReviewItem[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -61,13 +62,16 @@ export default function App() {
         
         // Sync internal states with fetched data
         setIsVisible(data.status === 'PUBLISHED');
+        setIsFeatured(data.featured || false);
         setDetails({
-          material: data.materials?.join(', ') || 'Not found',
-          dimensions: data.dimensions ? `${data.dimensions.widthCm || ''}x${data.dimensions.heightCm || ''} cm` : 'Not found',
-          region: data.artisan?.artisanProfile?.region || 'Not found',
-          craftMethod: data.tags?.join(', ') || 'Not found',
-          stock: data.stock?.toString() || '0',
+          title: data.title || '',
+          description: data.description || '',
+          category: data.category || '',
           price: data.price?.toString() || '0',
+          stock: data.stock?.toString() || '0',
+          materials: data.materials?.join(', ') || '',
+          tags: data.tags?.join(', ') || '',
+          dimensions: data.dimensions ? `${data.dimensions.widthCm || ''}x${data.dimensions.heightCm || ''}x${data.dimensions.depthCm || ''}` : '',
         });
         setReviews((data.reviews || []).map((review: any) => ({
           id: review.id,
@@ -113,6 +117,53 @@ export default function App() {
   const handleRemoveReview = (id: string) => {
     setReviews((prev) => prev.filter((review) => review.id !== id));
     showToast('Review removed');
+  };
+
+  const handleSaveDetails = async () => {
+    setIsSaving(true);
+    try {
+      const base = (process.env.NEXT_PUBLIC_BASE_URL ?? '').replace(/\/$/, '') || 'http://localhost:4000/api/v1';
+      const token = localStorage.getItem('token');
+      
+      const payload: any = {
+        title: details.title,
+        description: details.description,
+        category: details.category,
+        price: parseFloat(details.price) || 0,
+        stock: parseInt(details.stock, 10) || 0,
+        materials: details.materials?.split(',').map((s: string) => s.trim()).filter(Boolean) || [],
+        tags: details.tags?.split(',').map((s: string) => s.trim()).filter(Boolean) || [],
+      };
+
+      if (details.dimensions) {
+        const dimParts = details.dimensions.split('x').map((s: string) => parseFloat(s.trim()));
+        if (dimParts.length >= 2) {
+          payload.dimensions = {
+            widthCm: dimParts[0] || null,
+            heightCm: dimParts[1] || null,
+            depthCm: dimParts[2] || null,
+          };
+        }
+      }
+
+      const res = await fetch(`${base}/admin/products/${id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) throw new Error('Failed to update product details');
+      
+      showToast('Changes saved successfully');
+      setProductData((prev: any) => ({ ...prev, ...payload }));
+    } catch (err: any) {
+      showToast(`Error: ${err.message}`);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   if (loading) {
@@ -164,15 +215,28 @@ export default function App() {
 
             <div className="flex flex-wrap gap-2" style={{ fontFamily: 'Aeonik, Inter, sans-serif' }}>
               <button
-                onClick={() => showToast('Edit mode opened')}
+                onClick={() => { setActiveTab('Details'); showToast('Edit mode opened'); }}
                 className="inline-flex items-center gap-2 rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs transition duration-300 hover:-translate-y-1 hover:shadow-md"
               >
                 <Pencil className="h-3.5 w-3.5" /> Edit
               </button>
               <button
-                onClick={() => {
-                  setIsFeatured((prev) => !prev);
-                  showToast(isFeatured ? 'Removed from featured' : 'Marked as featured');
+                onClick={async () => {
+                  const newState = !isFeatured;
+                  setIsFeatured(newState);
+                  const base = (process.env.NEXT_PUBLIC_BASE_URL ?? '').replace(/\/$/, '') || 'http://localhost:4000/api/v1';
+                  const token = localStorage.getItem('token');
+                  try {
+                    await fetch(`${base}/admin/products/${id}`, {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                      body: JSON.stringify({ featured: newState }),
+                    });
+                    showToast(newState ? 'Marked as featured' : 'Removed from featured');
+                  } catch (e) {
+                    setIsFeatured(!newState);
+                    showToast('Failed to update featured status');
+                  }
                 }}
                 className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs transition duration-300 hover:-translate-y-1 hover:shadow-md ${
                   isFeatured ? 'border-[#e7d8bb] bg-[#faf5ea] text-[#6e5a3d]' : 'border-neutral-200 bg-white'
@@ -182,9 +246,23 @@ export default function App() {
                 {isFeatured ? 'Featured' : 'Feature'}
               </button>
               <button
-                onClick={() => {
-                  setIsVisible((prev) => !prev);
-                  showToast(!isVisible ? 'Product is now live' : 'Product hidden from marketplace');
+                onClick={async () => {
+                  const newState = !isVisible;
+                  setIsVisible(newState);
+                  const status = newState ? 'PUBLISHED' : 'APPROVED';
+                  const base = (process.env.NEXT_PUBLIC_BASE_URL ?? '').replace(/\/$/, '') || 'http://localhost:4000/api/v1';
+                  const token = localStorage.getItem('token');
+                  try {
+                    await fetch(`${base}/admin/products/${id}`, {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                      body: JSON.stringify({ status }),
+                    });
+                    showToast(newState ? 'Product is now live' : 'Product hidden from marketplace');
+                  } catch (e) {
+                    setIsVisible(!newState);
+                    showToast('Failed to update visibility status');
+                  }
                 }}
                 className="inline-flex items-center gap-2 rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs transition duration-300 hover:-translate-y-1 hover:shadow-md"
               >
@@ -436,9 +514,26 @@ export default function App() {
                   <ShieldCheck className="h-3.5 w-3.5" /> Verified Artisan
                 </span>
                 <div className="mt-4 grid grid-cols-3 gap-2 text-xs">
-                  <button className="rounded-lg border border-neutral-200 px-2 py-1.5">View profile</button>
+                  <button onClick={() => window.location.href = `/admin/users/${productData?.artisan?.id}`} className="rounded-lg border border-neutral-200 px-2 py-1.5">View profile</button>
                   <button className="rounded-lg border border-neutral-200 px-2 py-1.5">Message</button>
-                  <button className="rounded-lg border border-rose-200 px-2 py-1.5 text-rose-700">Suspend</button>
+                  <button 
+                    onClick={async () => {
+                      if (!productData?.artisan?.id) return;
+                      const base = (process.env.NEXT_PUBLIC_BASE_URL ?? '').replace(/\/$/, '') || 'http://localhost:4000/api/v1';
+                      const token = localStorage.getItem('token');
+                      try {
+                        const res = await fetch(`${base}/admin/users/${productData.artisan.id}`, {
+                          method: 'PATCH',
+                          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                          body: JSON.stringify({ status: 'SUSPENDED' }),
+                        });
+                        if (res.ok) showToast('Artisan suspended');
+                        else showToast('Failed to suspend artisan');
+                      } catch (e) {
+                        showToast('Error suspending artisan');
+                      }
+                    }}
+                    className="rounded-lg border border-rose-200 px-2 py-1.5 text-rose-700">Suspend</button>
                 </div>
               </article>
 
@@ -473,22 +568,49 @@ export default function App() {
                   Admin Controls
                 </h3>
                 <div className="mt-4 space-y-2 text-sm" style={{ fontFamily: 'Aeonik, Inter, sans-serif' }}>
-                  <button onClick={() => showToast('Edit page opened')} className="w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-left">
+                  <button onClick={() => { setActiveTab('Details'); showToast('Edit page opened'); }} className="w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-left">
                     Edit product
                   </button>
                   <button
-                    onClick={() => {
-                      setIsVisible((prev) => !prev);
-                      showToast(isVisible ? 'Visibility set to hidden' : 'Visibility set to live');
+                    onClick={async () => {
+                      const newState = !isVisible;
+                      setIsVisible(newState);
+                      const status = newState ? 'PUBLISHED' : 'APPROVED';
+                      const base = (process.env.NEXT_PUBLIC_BASE_URL ?? '').replace(/\/$/, '') || 'http://localhost:4000/api/v1';
+                      const token = localStorage.getItem('token');
+                      try {
+                        await fetch(`${base}/admin/products/${id}`, {
+                          method: 'PATCH',
+                          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                          body: JSON.stringify({ status }),
+                        });
+                        showToast(newState ? 'Visibility set to live' : 'Visibility set to hidden');
+                      } catch (e) {
+                        setIsVisible(!newState);
+                        showToast('Failed to update visibility');
+                      }
                     }}
                     className="w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-left"
                   >
                     Toggle visibility
                   </button>
                   <button
-                    onClick={() => {
-                      setIsFeatured((prev) => !prev);
-                      showToast(isFeatured ? 'Removed from featured list' : 'Added to featured list');
+                    onClick={async () => {
+                      const newState = !isFeatured;
+                      setIsFeatured(newState);
+                      const base = (process.env.NEXT_PUBLIC_BASE_URL ?? '').replace(/\/$/, '') || 'http://localhost:4000/api/v1';
+                      const token = localStorage.getItem('token');
+                      try {
+                        await fetch(`${base}/admin/products/${id}`, {
+                          method: 'PATCH',
+                          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                          body: JSON.stringify({ featured: newState }),
+                        });
+                        showToast(newState ? 'Added to featured list' : 'Removed from featured list');
+                      } catch (e) {
+                        setIsFeatured(!newState);
+                        showToast('Failed to update featured');
+                      }
                     }}
                     className="w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-left"
                   >
@@ -502,6 +624,9 @@ export default function App() {
                   </button>
                   <button onClick={() => setShowDeleteConfirm(true)} className="w-full rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-left text-rose-700">
                     <span className="inline-flex items-center gap-2"><Trash2 className="h-3.5 w-3.5" /> Delete product</span>
+                  </button>
+                  <button onClick={handleSaveDetails} disabled={isSaving} className="w-full rounded-xl bg-[#3E2723] px-3 py-2 text-center text-white shadow-md transition hover:bg-[#2A1A17] disabled:opacity-50">
+                    {isSaving ? 'Saving...' : 'Save changes'}
                   </button>
                 </div>
               </article>
@@ -544,9 +669,9 @@ export default function App() {
               <div className="rounded-2xl border border-[#ddceb7] bg-white/70 px-6 py-5 text-center">
                 <MessageSquare className="mx-auto mb-2 h-8 w-8 text-[#725f43]" />
                 <p className="text-sm" style={{ fontFamily: 'Aeonik, Inter, sans-serif' }}>
-                  Interactive 3D model placeholder
+                  3D Model Not Available
                 </p>
-                <p className="mt-1 text-xs text-[#766a5d]">Drag to explore</p>
+                <p className="mt-1 text-xs text-[#766a5d]">This product does not have a 3D preview</p>
               </div>
             </div>
           </div>
@@ -564,9 +689,20 @@ export default function App() {
             <div className="mt-4 flex justify-end gap-2">
               <button onClick={() => setShowDeleteConfirm(false)} className="rounded-lg border border-neutral-200 px-3 py-2 text-sm">Cancel</button>
               <button
-                onClick={() => {
+                onClick={async () => {
                   setShowDeleteConfirm(false);
-                  showToast('Delete request submitted');
+                  const base = (process.env.NEXT_PUBLIC_BASE_URL ?? '').replace(/\/$/, '') || 'http://localhost:4000/api/v1';
+                  const token = localStorage.getItem('token');
+                  try {
+                    await fetch(`${base}/admin/products/${id}`, {
+                      method: 'DELETE',
+                      headers: { Authorization: `Bearer ${token}` },
+                    });
+                    showToast('Product archived successfully');
+                    setTimeout(() => window.location.href = '/admin/products', 1500);
+                  } catch (e) {
+                    showToast('Failed to archive product');
+                  }
                 }}
                 className="rounded-lg bg-rose-600 px-3 py-2 text-sm text-white"
               >

@@ -315,7 +315,7 @@ export default function App() {
               </div>
 
               <div className="mt-3 grid grid-cols-4 gap-2">
-                {gallery.map((image, index) => (
+                {gallery.map((image: string, index: number) => (
                   <button
                     key={image}
                     onClick={() => setSelectedImage(index)}
@@ -396,7 +396,7 @@ export default function App() {
                     { title: 'Digital submission', note: productData?.verification?.submittedAt ? `Submitted on ${new Date(productData.verification.submittedAt).toLocaleDateString()}` : 'Not submitted yet.' },
                     { title: 'Review', note: productData?.verification?.reviewedAt ? `Reviewed on ${new Date(productData.verification.reviewedAt).toLocaleDateString()}` : 'Not reviewed yet.' },
                     { title: 'Publication', note: productData?.verification?.publishedAt ? `Published on ${new Date(productData.verification.publishedAt).toLocaleDateString()}` : 'Not published yet.' },
-                  ].map((step, index) => (
+                  ].map((step: any, index: number) => (
                     <div key={step.title} className="relative rounded-2xl border border-neutral-200 p-4">
                       {index < 2 && <span className="absolute left-[18px] top-[52px] h-8 w-px bg-neutral-200" />}
                       <div className="flex items-start gap-3">

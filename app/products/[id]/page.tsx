@@ -10,8 +10,17 @@ import { Heart } from "lucide-react";
 import React from "react";
 import { createElement, useEffect, useState } from "react";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import ChatSupport from "@/components/ChatSupport";
 import { toast } from "react-toastify";
+import {
+  fetchProductById,
+  getArtisanName,
+  getProductImage,
+  submitReview,
+  type ApiProductSummary,
+  type ApiReview,
+} from "@/lib/api";
 
 // --- Types ---
 
@@ -25,7 +34,7 @@ type Review = {
 };
 
 type DetailProduct = {
-  id: number;
+  id: string;
   name: string;
   category: string;
   price: number;
@@ -44,90 +53,45 @@ type DetailProduct = {
   };
 };
 
-// --- Mock Data ---
+type RelatedProduct = {
+  id: string;
+  name: string;
+  category: string;
+  price: number;
+  image: string;
+  badge?: "Handmade" | "New";
+};
 
-const product: DetailProduct = {
-  id: 1,
-  name: "Habesha Loomed Cotton Dress",
-  category: "Textiles",
-  price: 168,
-  shortDescription:
-    "A refined hand-loomed silhouette finished with traditional tibeb embroidery from northern Ethiopia.",
-  story:
-    "This piece is crafted by hand using techniques preserved across generations of Ethiopian weavers. Each thread is chosen for texture and durability, then finished with deliberate embroidery details that carry regional identity and care.",
-  material: "Hand-loomed Ethiopian cotton with hand-finished tibeb embroidery",
-  dimensions: "Made to measure. Standard length: 136 cm",
-  care: "Cold hand wash. Line dry in shade. Steam lightly inside-out.",
-  badge: "Handmade",
-  images: [
-    "https://images.unsplash.com/photo-1469334031218-e382a71b716b?auto=format&fit=crop&w=1300&q=80",
-    "https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=1300&q=80",
-    "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?auto=format&fit=crop&w=1300&q=80",
-  ],
+const initialEmptyProduct: DetailProduct = {
+  id: "",
+  name: "",
+  category: "",
+  price: 0,
+  shortDescription: "",
+  story: "",
+  material: "",
+  dimensions: "",
+  care: "",
+  images: [],
   artisan: {
-    name: "Almaz Tekle",
-    title: "Master Weaver, Addis Ababa",
-    portrait:
-      "https://images.unsplash.com/photo-1489424731084-a5d8b219a5bb?auto=format&fit=crop&w=900&q=80",
-    story:
-      "Almaz has spent more than two decades preserving hand-loom traditions through contemporary forms. Her studio works in small batches, ensuring every piece keeps the hand, rhythm, and character of true craft.",
+    name: "",
+    title: "",
+    portrait: "",
+    story: "",
   },
 };
 
-const relatedProducts = [
-  {
-    id: 2,
-    name: "Lalibela Filigree Earrings",
-    category: "Jewelry",
-    price: 124,
-    image:
-      "https://images.unsplash.com/photo-1611591437281-460bfbe1220a?auto=format&fit=crop&w=900&q=80",
-    badge: "New",
-  },
-  {
-    id: 3,
-    name: "Sidama Coffee Ceremony Set",
-    category: "Home",
-    price: 210,
-    image:
-      "https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=900&q=80",
-    badge: "Handmade",
-  },
-  {
-    id: 4,
-    name: "Harar Palm Tote",
-    category: "Accessories",
-    price: 86,
-    image:
-      "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=900&q=80",
-  },
-];
-
-const initialReviews: Review[] = [
-  {
-    id: "r1",
-    author: "Sarah M.",
-    rating: 5,
-    date: "Oct 12, 2024",
-    comment:
-      "The quality of the cotton is exceptional. You can really feel the hand-loomed texture. It fits perfectly!",
-    isVerified: true,
-  },
-  {
-    id: "r2",
-    author: "James K.",
-    rating: 4,
-    date: "Sept 05, 2024",
-    comment:
-      "Beautiful embroidery. Delivery took a bit longer than expected, but the product is worth the wait.",
-    isVerified: true,
-  },
-];
-
 export default function App() {
+  const params = useParams<{ id: string }>();
+  const routeProductId = params?.id;
   const { token } = useAuth();
   const { addItem } = useCart();
   const wishlistUserKey = token ?? "guest";
+  const [product, setProduct] = useState<DetailProduct>(initialEmptyProduct);
+  const [relatedProducts, setRelatedProducts] = useState<RelatedProduct[]>([]);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [isLoadingProduct, setIsLoadingProduct] = useState(true);
+  const [productFetchError, setProductFetchError] = useState("");
   // UI States
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
@@ -145,9 +109,81 @@ export default function App() {
   const [reviewStatus, setReviewStatus] = useState<
     "idle" | "submitting" | "success"
   >("idle");
+  const [reviewError, setReviewError] = useState("");
+
+  useEffect(() => {
+    const loadProduct = async () => {
+      if (!routeProductId) return;
+
+      try {
+        setIsLoadingProduct(true);
+        const apiProduct = await fetchProductById(routeProductId);
+        setProduct({
+          id: apiProduct.id,
+          name: apiProduct.title,
+          category: apiProduct.category,
+          price: apiProduct.price,
+          shortDescription:
+            apiProduct.shortDescription || apiProduct.description,
+          story: apiProduct.description,
+          material: apiProduct.material || "Handcrafted mixed materials",
+          dimensions: apiProduct.dimensions || "Not specified",
+          care: apiProduct.careInstructions || "Ask artisan for care guide",
+          badge: apiProduct.publishedAt ? "Handmade" : undefined,
+          images:
+            apiProduct.media?.map((m) => m.url).filter(Boolean) || [getProductImage(apiProduct)],
+          artisan: {
+            name: getArtisanName(apiProduct.artisan),
+            title: apiProduct.artisan?.artisanProfile?.shopName || "Artisan",
+            portrait:
+              apiProduct.media?.[0]?.url ||
+              "https://images.unsplash.com/photo-1489424731084-a5d8b219a5bb?auto=format&fit=crop&w=900&q=80",
+            story:
+              apiProduct.artisan?.artisanProfile?.bio ||
+              "Authentic Ethiopian craft expertise.",
+          },
+        });
+
+        setRelatedProducts(
+          (apiProduct.relatedProducts || []).map((item: ApiProductSummary) => ({
+            id: item.id,
+            name: item.title,
+            category: item.category,
+            price: item.price,
+            image: getProductImage(item),
+            badge: item.publishedAt ? ("Handmade" as const) : undefined,
+          })),
+        );
+
+        setReviews(
+          (apiProduct.reviews || []).map((review: ApiReview) => ({
+            id: review.id,
+            author: `${review.customer.firstName} ${review.customer.lastName}`,
+            rating: review.rating,
+            date: new Date(review.createdAt).toLocaleDateString(),
+            comment: review.comment,
+            isVerified: true,
+          })),
+        );
+        setProductFetchError("");
+      } catch (error) {
+        console.error("Failed to load product detail", error);
+        setProduct(initialEmptyProduct);
+        setRelatedProducts([]);
+        setReviews([]);
+        setProductFetchError(
+          "Failed to load product detail from backend.",
+        );
+      } finally {
+        setIsLoadingProduct(false);
+      }
+    };
+
+    loadProduct();
+  }, [routeProductId]);
 
   // Business Rules Mocks (Normally from AuthContext/API)
-  const isUserAuthenticated = true;
+  const isUserAuthenticated = Boolean(token);
   const hasPurchasedAndReceived = true; // Use Case: "Customer has purchased and received the product"
   const hasAlreadyReviewed = false; // Business Rule: "one review per customer per product"
 
@@ -220,21 +256,48 @@ export default function App() {
   const isSectionVisible = (id: string) => revealedSections.includes(id);
 
   // UC17 Submission Logic
-  const handleSubmitReview = (e: React.FormEvent) => {
+  const handleSubmitReview = async (e: React.FormEvent) => {
     e.preventDefault();
     // Alternative Flow: Missing input check
     if (userRating === 0 || userComment.trim() === "") {
-      alert("Please provide both a rating and a comment.");
+      setReviewError("Please provide both a rating and a comment.");
       return;
     }
+    if (!routeProductId || !token) {
+      setReviewError("Please sign in to submit a review.");
+      return;
+    }
+    setReviewError("");
     setReviewStatus("submitting");
+    try {
+      const createdReview = await submitReview(routeProductId, token, {
+        rating: userRating,
+        comment: userComment.trim(),
+      });
 
-    // Simulate API call (Postcondition: Save and mark as pending moderation)
-    setTimeout(() => {
+      setReviews((prev) => [
+        {
+          id: createdReview.id,
+          author: `${createdReview.customer.firstName} ${createdReview.customer.lastName}`,
+          rating: createdReview.rating,
+          date: new Date(createdReview.createdAt).toLocaleDateString(),
+          comment: createdReview.comment,
+          isVerified: true,
+        },
+        ...prev,
+      ]);
       setReviewStatus("success");
       setUserComment("");
       setUserRating(0);
-    }, 1500);
+      toast.success("Review submitted successfully.");
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Failed to submit your review.";
+      setReviewError(message);
+      setReviewStatus("idle");
+    }
   };
 
   // Share Logic
@@ -277,6 +340,26 @@ export default function App() {
     setMediaMode("3d");
     setIs3DActivated(true);
   };
+  const activeImage =
+    product.images[selectedImage] || product.images[0] || "/placeholder-product.jpg";
+
+  if (!isLoadingProduct && !product.id) {
+    return (
+      <div className="min-h-screen bg-[#FAFAF9] text-[#1C1C1C] font-inter">
+        <Header />
+        <main className="mx-auto max-w-[900px] px-5 pb-20 pt-32 text-center md:px-10 md:pt-40">
+          <h1 className="font-druk-medium text-2xl uppercase tracking-[0.06em]">Product Unavailable</h1>
+          <p className="mt-4 text-[#4f4b45]">
+            This product could not be loaded from the backend.
+          </p>
+          <Link href="/products" className="mt-8 inline-block border border-[#1C1C1C] bg-[#1C1C1C] px-6 py-3 text-sm text-[#FAFAF9] transition-colors hover:bg-transparent hover:text-[#1C1C1C]">
+            Back to Collection
+          </Link>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#FAFAF9] text-[#1C1C1C] font-inter">
@@ -295,6 +378,16 @@ export default function App() {
         >
           <span aria-hidden="true">←</span> Back to Collection
         </a>
+        {isLoadingProduct && (
+          <p className="font-aeonik mt-4 inline-flex border border-[#ddd8cf] bg-[#f8f6f1] px-3 py-2 text-[10px] uppercase tracking-[0.12em] text-[#5f5b55]">
+            Loading product from backend...
+          </p>
+        )}
+        {productFetchError && (
+          <p className="font-aeonik mt-4 inline-flex border border-[#e0b7b7] bg-[#fff5f5] px-3 py-2 text-[10px] uppercase tracking-[0.12em] text-[#8d3a3a]">
+            {productFetchError}
+          </p>
+        )}
 
         {/* --- PRODUCT SHOWCASE --- */}
         <section
@@ -336,7 +429,7 @@ export default function App() {
               >
                 <img
                   key={selectedImage}
-                  src={product.images[selectedImage]}
+                  src={activeImage}
                   alt={product.name}
                   className="h-[62vh] min-h-[420px] w-full animate-[imageFade_420ms_ease] object-cover transition-transform duration-500 ease-out group-hover:scale-105"
                 />
@@ -348,7 +441,7 @@ export default function App() {
                   (isModelViewerReady ? (
                     createElement("model-viewer", {
                       src: "https://modelviewer.dev/shared-assets/models/Chair.glb",
-                      poster: product.images[selectedImage],
+                      poster: activeImage,
                       style: {
                         width: "100%",
                         height: "100%",
@@ -610,7 +703,7 @@ export default function App() {
                 <div>
                   <div className="flex text-[#C6A75E]">{"★".repeat(5)}</div>
                   <p className="font-aeonik text-[10px] uppercase tracking-widest text-[#767068]">
-                    Based on {initialReviews.length} verified reviews
+                    Based on {reviews.length} verified reviews
                   </p>
                 </div>
               </div>
@@ -620,7 +713,7 @@ export default function App() {
                 {!isUserAuthenticated ? (
                   <p className="text-sm">
                     Please{" "}
-                    <Link href="/login" className="underline">
+                    <Link href="/auth/login" className="underline">
                       sign in
                     </Link>{" "}
                     to leave feedback.
@@ -646,6 +739,11 @@ export default function App() {
                   </div>
                 ) : (
                   <form onSubmit={handleSubmitReview} className="space-y-6">
+                    {reviewError && (
+                      <p className="border border-[#e0b7b7] bg-[#fff5f5] px-3 py-2 text-xs text-[#8d3a3a]">
+                        {reviewError}
+                      </p>
+                    )}
                     <div>
                       <p className="font-aeonik text-[10px] uppercase tracking-widest text-[#1C1C1C] mb-3">
                         Your Rating
@@ -693,7 +791,7 @@ export default function App() {
 
             {/* Existing Reviews List */}
             <div className="lg:col-span-7 space-y-12">
-              {initialReviews.map((review) => (
+              {reviews.map((review) => (
                 <div
                   key={review.id}
                   className="border-b border-[#e4dfd5] pb-10"

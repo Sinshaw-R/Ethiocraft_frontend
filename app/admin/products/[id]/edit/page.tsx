@@ -381,11 +381,9 @@ export default function ProductEditPage() {
                       onChange={(e) => setFormData({...formData, status: e.target.value})}
                       className="bg-white border border-[#EAE5D9] rounded-lg px-3 py-1.5 text-[11px] font-black text-[#3E2723] outline-none cursor-pointer uppercase"
                     >
-                      <option value="DRAFT">Draft</option>
                       <option value="APPROVED">Approved</option>
                       <option value="PUBLISHED">Published</option>
                       <option value="ARCHIVED">Archived</option>
-                      <option value="HIDDEN">Hidden</option>
                     </select>
                   </div>
 

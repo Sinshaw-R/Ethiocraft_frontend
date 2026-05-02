@@ -13,8 +13,8 @@ import { toast } from 'react-toastify';
 
 export default function App() {
   const { items, updateQuantity: updateCartQuantity, removeItem: removeCartItem } = useCart();
-  const [leavingIds, setLeavingIds] = useState<number[]>([]);
-  const [quantityPulseId, setQuantityPulseId] = useState<number | null>(null);
+  const [leavingIds, setLeavingIds] = useState<Array<string | number>>([]);
+  const [quantityPulseId, setQuantityPulseId] = useState<string | number | null>(null);
   const timeoutIdsRef = useRef<number[]>([]);
   const TAX_RATE = 0.15;
 
@@ -33,7 +33,7 @@ export default function App() {
     };
   }, []);
 
-  const updateQuantity = (id: number, nextQuantity: number) => {
+  const updateQuantity = (id: string | number, nextQuantity: number) => {
     if (nextQuantity < 1) return;
     updateCartQuantity(id, nextQuantity);
     setQuantityPulseId(id);
@@ -44,7 +44,7 @@ export default function App() {
     timeoutIdsRef.current.push(timeoutId);
   };
 
-  const removeItem = (id: number, name: string) => {
+  const removeItem = (id: string | number, name: string) => {
     setLeavingIds((current) => (current.includes(id) ? current : [...current, id]));
     const timeoutId = window.setTimeout(() => {
       removeCartItem(id);

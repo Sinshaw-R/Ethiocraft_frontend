@@ -12,11 +12,12 @@ import { Heart } from 'lucide-react';
 import Link from 'next/link';
 import ChatSupport from '@/components/ChatSupport';
 import { toast } from 'react-toastify';
+import { fetchProducts, getProductImage, type ApiProductSummary } from '@/lib/api';
 
 type Product = {
-  id: number;
+  id: string;
   name: string;
-  category: 'Textiles' | 'Jewelry' | 'Home' | 'Accessories';
+  category: string;
   price: number;
   image: string;
   badge?: 'Handmade' | 'New';
@@ -24,97 +25,6 @@ type Product = {
   material?: string;
   rating: number;
 };
-
-// UC17 Submission Logic
-
-const products: Product[] = [
-  {
-    id: 1,
-    name: 'Habesha Cotton Dress',
-    category: 'Textiles',
-    price: 168,
-    image: 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=900&q=80',
-    badge: 'Handmade',
-    region: 'Amhara',
-    material: 'Cotton',
-    rating: 4.8,
-  },
-  {
-    id: 2,
-    name: 'Lalibela Filigree Earrings',
-    category: 'Jewelry',
-    price: 124,
-    image: 'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?auto=format&fit=crop&w=900&q=80',
-    badge: 'New',
-    region: 'Amhara',
-    material: 'Silver',
-    rating: 4.5,
-  },
-  {
-    id: 3,
-    name: 'Sidama Coffee Ceremony Set',
-    category: 'Home',
-    price: 210,
-    image: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=900&q=80',
-    badge: 'Handmade',
-    region: 'SNNPR',
-    material: 'Clay',
-    rating: 5.0,
-  },
-  {
-    id: 4,
-    name: 'Woven Mesob Basket',
-    category: 'Home',
-    price: 96,
-    image: 'https://images.unsplash.com/photo-1610701596061-2ecf227e85b2?auto=format&fit=crop&w=900&q=80',
-    region: 'Oromia',
-    material: 'Straw',
-    rating: 4.2,
-  },
-  {
-    id: 5,
-    name: 'Addis Leather Weekender',
-    category: 'Accessories',
-    price: 182,
-    image: 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?auto=format&fit=crop&w=900&q=80',
-    badge: 'New',
-    region: 'Addis Ababa',
-    material: 'Leather',
-    rating: 4.9,
-  },
-  {
-    id: 6,
-    name: 'Hand-Loomed Gabi Shawl',
-    category: 'Textiles',
-    price: 88,
-    image: 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=900&q=80',
-    badge: 'Handmade',
-    region: 'Addis Ababa',
-    material: 'Cotton',
-    rating: 4.7,
-  },
-  {
-    id: 7,
-    name: 'Axum Cross Pendant',
-    category: 'Jewelry',
-    price: 116,
-    image: 'https://images.unsplash.com/photo-1617038260897-41a1f14a8ca0?auto=format&fit=crop&w=900&q=80',
-    region: 'Tigray',
-    material: 'Silver',
-    rating: 4.6,
-  },
-  {
-    id: 8,
-    name: 'Harar Palm Tote',
-    category: 'Accessories',
-    price: 74,
-    image: 'https://images.unsplash.com/photo-1594223274512-ad4803739b7c?auto=format&fit=crop&w=900&q=80',
-    badge: 'Handmade',
-    region: 'Oromia',
-    material: 'Straw',
-    rating: 4.4,
-  },
-];
 
 const categories = ['All', 'Textiles', 'Jewelry', 'Home', 'Accessories'] as const;
 const regionsList = ['Addis Ababa', 'Oromia', 'SNNPR', 'Amhara', 'Tigray'];
@@ -135,9 +45,12 @@ function ProductPageContent() {
   const wishlistUserKey = token ?? 'guest';
   const [sortBy, setSortBy] = useState<'curated' | 'price-low' | 'price-high' | 'newest' | 'rating-high' | 'rating-low'>('curated');
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [visibleIds, setVisibleIds] = useState<number[]>([]);
-  const [wishlistIds, setWishlistIds] = useState<number[]>([]);
+  const [visibleIds, setVisibleIds] = useState<string[]>([]);
+  const [wishlistIds, setWishlistIds] = useState<Array<string | number>>([]);
   const [wishlistMessage, setWishlistMessage] = useState('');
+  const [products, setProducts] = useState<Product[]>([]);
+  const [isLoadingProducts, setIsLoadingProducts] = useState(true);
+  const [productFetchError, setProductFetchError] = useState('');
 
   // Filter States
   const [activeCategory, setActiveCategory] = useState<(typeof categories)[number]>('All');
@@ -147,6 +60,36 @@ function ProductPageContent() {
   const [selectedMaterials, setSelectedMaterials] = useState<string[]>([]);
   const [priceRange, setPriceRange] = useState([0, 500]);
   const keyword = searchParams.get('q')?.trim().toLowerCase() ?? '';
+
+  useEffect(() => {
+    const loadProducts = async () => {
+      try {
+        setIsLoadingProducts(true);
+        const response = await fetchProducts({ limit: 100 });
+        const mappedProducts: Product[] = response.items.map((item: ApiProductSummary) => ({
+          id: item.id,
+          name: item.title,
+          category: item.category,
+          price: item.price,
+          image: getProductImage(item),
+          badge: item.publishedAt ? ('Handmade' as const) : undefined,
+          region: item.artisan?.artisanProfile?.region || undefined,
+          material: item.materials?.[0],
+          rating: item._count?.reviews ? 5 : 4.5,
+        }));
+        setProducts(mappedProducts);
+        setProductFetchError('');
+      } catch (error) {
+        console.error('Failed to load products', error);
+        setProducts([]);
+        setProductFetchError('Failed to load products from backend.');
+      } finally {
+        setIsLoadingProducts(false);
+      }
+    };
+
+    loadProducts();
+  }, []);
 
   // Initialize filters from URL params
   useEffect(() => {
@@ -180,7 +123,12 @@ function ProductPageContent() {
       .filter((product) => (showHandmadeOnly ? product.badge === 'Handmade' : true))
       .filter((product) => product.price >= priceRange[0] && product.price <= priceRange[1])
       .filter((product) => selectedRegions.length === 0 || (product.region && selectedRegions.includes(product.region)))
-      .filter((product) => selectedMaterials.length === 0 || (product.material && selectedMaterials.includes(product.material)))
+      .filter(
+        (product) =>
+          selectedMaterials.length === 0 ||
+          !product.material ||
+          selectedMaterials.includes(product.material),
+      )
       .filter((product) => {
         if (!keyword) return true;
         const searchable = `${product.name} ${product.category} ${product.region ?? ''} ${product.material ?? ''}`.toLowerCase();
@@ -210,7 +158,7 @@ function ProductPageContent() {
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
-            const productId = Number(entry.target.getAttribute('data-product-id'));
+            const productId = String(entry.target.getAttribute('data-product-id'));
             setVisibleIds((prev) => (prev.includes(productId) ? prev : [...prev, productId]));
           }
         });
@@ -247,7 +195,7 @@ function ProductPageContent() {
     setState(state.includes(item) ? state.filter((i) => i !== item) : [...state, item]);
   };
 
-  const handleWishlistToggle = (event: React.MouseEvent<HTMLButtonElement>, productId: number) => {
+  const handleWishlistToggle = (event: React.MouseEvent<HTMLButtonElement>, productId: string) => {
     event.preventDefault();
     event.stopPropagation();
 
@@ -322,6 +270,16 @@ function ProductPageContent() {
         {wishlistMessage && (
           <p className="mb-5 border border-[#ddd8cf] bg-[#f8f6f1] px-4 py-2 text-xs uppercase tracking-wider text-[#5f5b55]">
             {wishlistMessage}
+          </p>
+        )}
+        {isLoadingProducts && (
+          <p className="mb-5 border border-[#ddd8cf] bg-[#f8f6f1] px-4 py-2 text-xs uppercase tracking-wider text-[#5f5b55]">
+            Loading products from backend...
+          </p>
+        )}
+        {productFetchError && (
+          <p className="mb-5 border border-[#e0b7b7] bg-[#fff5f5] px-4 py-2 text-xs uppercase tracking-wider text-[#8d3a3a]">
+            {productFetchError}
           </p>
         )}
 

@@ -17,6 +17,7 @@ import {
   fetchProductById,
   getArtisanName,
   getProductImage,
+  submitReview,
   type ApiProductSummary,
   type ApiReview,
 } from "@/lib/api";
@@ -88,7 +89,7 @@ export default function App() {
   const wishlistUserKey = token ?? "guest";
   const [product, setProduct] = useState<DetailProduct>(initialEmptyProduct);
   const [relatedProducts, setRelatedProducts] = useState<RelatedProduct[]>([]);
-  const [initialReviews, setInitialReviews] = useState<Review[]>([]);
+  const [reviews, setReviews] = useState<Review[]>([]);
   const [isLoadingProduct, setIsLoadingProduct] = useState(true);
   const [productFetchError, setProductFetchError] = useState("");
   // UI States
@@ -108,6 +109,7 @@ export default function App() {
   const [reviewStatus, setReviewStatus] = useState<
     "idle" | "submitting" | "success"
   >("idle");
+  const [reviewError, setReviewError] = useState("");
 
   useEffect(() => {
     const loadProduct = async () => {
@@ -153,7 +155,7 @@ export default function App() {
           })),
         );
 
-        setInitialReviews(
+        setReviews(
           (apiProduct.reviews || []).map((review: ApiReview) => ({
             id: review.id,
             author: `${review.customer.firstName} ${review.customer.lastName}`,
@@ -168,7 +170,7 @@ export default function App() {
         console.error("Failed to load product detail", error);
         setProduct(initialEmptyProduct);
         setRelatedProducts([]);
-        setInitialReviews([]);
+        setReviews([]);
         setProductFetchError(
           "Failed to load product detail from backend.",
         );
@@ -181,7 +183,7 @@ export default function App() {
   }, [routeProductId]);
 
   // Business Rules Mocks (Normally from AuthContext/API)
-  const isUserAuthenticated = true;
+  const isUserAuthenticated = Boolean(token);
   const hasPurchasedAndReceived = true; // Use Case: "Customer has purchased and received the product"
   const hasAlreadyReviewed = false; // Business Rule: "one review per customer per product"
 
@@ -254,21 +256,48 @@ export default function App() {
   const isSectionVisible = (id: string) => revealedSections.includes(id);
 
   // UC17 Submission Logic
-  const handleSubmitReview = (e: React.FormEvent) => {
+  const handleSubmitReview = async (e: React.FormEvent) => {
     e.preventDefault();
     // Alternative Flow: Missing input check
     if (userRating === 0 || userComment.trim() === "") {
-      alert("Please provide both a rating and a comment.");
+      setReviewError("Please provide both a rating and a comment.");
       return;
     }
+    if (!routeProductId || !token) {
+      setReviewError("Please sign in to submit a review.");
+      return;
+    }
+    setReviewError("");
     setReviewStatus("submitting");
+    try {
+      const createdReview = await submitReview(routeProductId, token, {
+        rating: userRating,
+        comment: userComment.trim(),
+      });
 
-    // Simulate API call (Postcondition: Save and mark as pending moderation)
-    setTimeout(() => {
+      setReviews((prev) => [
+        {
+          id: createdReview.id,
+          author: `${createdReview.customer.firstName} ${createdReview.customer.lastName}`,
+          rating: createdReview.rating,
+          date: new Date(createdReview.createdAt).toLocaleDateString(),
+          comment: createdReview.comment,
+          isVerified: true,
+        },
+        ...prev,
+      ]);
       setReviewStatus("success");
       setUserComment("");
       setUserRating(0);
-    }, 1500);
+      toast.success("Review submitted successfully.");
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Failed to submit your review.";
+      setReviewError(message);
+      setReviewStatus("idle");
+    }
   };
 
   // Share Logic
@@ -674,7 +703,7 @@ export default function App() {
                 <div>
                   <div className="flex text-[#C6A75E]">{"★".repeat(5)}</div>
                   <p className="font-aeonik text-[10px] uppercase tracking-widest text-[#767068]">
-                    Based on {initialReviews.length} verified reviews
+                    Based on {reviews.length} verified reviews
                   </p>
                 </div>
               </div>
@@ -684,7 +713,7 @@ export default function App() {
                 {!isUserAuthenticated ? (
                   <p className="text-sm">
                     Please{" "}
-                    <Link href="/login" className="underline">
+                    <Link href="/auth/login" className="underline">
                       sign in
                     </Link>{" "}
                     to leave feedback.
@@ -710,6 +739,11 @@ export default function App() {
                   </div>
                 ) : (
                   <form onSubmit={handleSubmitReview} className="space-y-6">
+                    {reviewError && (
+                      <p className="border border-[#e0b7b7] bg-[#fff5f5] px-3 py-2 text-xs text-[#8d3a3a]">
+                        {reviewError}
+                      </p>
+                    )}
                     <div>
                       <p className="font-aeonik text-[10px] uppercase tracking-widest text-[#1C1C1C] mb-3">
                         Your Rating
@@ -757,7 +791,7 @@ export default function App() {
 
             {/* Existing Reviews List */}
             <div className="lg:col-span-7 space-y-12">
-              {initialReviews.map((review) => (
+              {reviews.map((review) => (
                 <div
                   key={review.id}
                   className="border-b border-[#e4dfd5] pb-10"

@@ -100,6 +100,50 @@ export type ApiOrder = {
   currency: string;
   createdAt: string;
   items: ApiOrderItem[];
+  paymentMethod?: string | null;
+  paymentStatus?: string | null;
+  shippingAddress?: {
+    fullName?: string;
+    phoneNumber?: string;
+    street?: string;
+    city?: string;
+    region?: string;
+    country?: string;
+    postalCode?: string;
+  } | null;
+  deliveryAddress?: {
+    fullName?: string;
+    phoneNumber?: string;
+    street?: string;
+    city?: string;
+    region?: string;
+    country?: string;
+    postalCode?: string;
+  } | null;
+  estimatedDeliveryDate?: string | null;
+  deliveredAt?: string | null;
+};
+
+export type ApiOrderTrackingEvent = {
+  id?: string;
+  status: string;
+  location?: string | null;
+  description?: string | null;
+  note?: string | null;
+  timestamp?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+};
+
+export type ApiOrderTracking = {
+  orderId: string;
+  shipmentStatus?: string | null;
+  carrier?: string | null;
+  trackingNumber?: string | null;
+  estimatedDeliveryDate?: string | null;
+  shippedAt?: string | null;
+  deliveredAt?: string | null;
+  events: ApiOrderTrackingEvent[];
 };
 
 export type OrderListParams = {
@@ -214,6 +258,58 @@ export async function fetchOrders(
 
   const json = await res.json();
   return json.data as OrderListResponse;
+}
+
+export async function fetchOrderById(
+  orderId: string,
+  token: string
+): Promise<ApiOrder> {
+  const res = await fetch(`${BASE_URL}/orders/${orderId}`, {
+    cache: "no-store",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.message || `Failed to fetch order: ${res.status}`);
+  }
+
+  const json = await res.json();
+  return json.data as ApiOrder;
+}
+
+export async function fetchOrderTracking(
+  orderId: string,
+  token: string
+): Promise<ApiOrderTracking> {
+  const res = await fetch(`${BASE_URL}/orders/${orderId}/tracking`, {
+    cache: "no-store",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(
+      err?.message || `Failed to fetch order tracking: ${res.status}`
+    );
+  }
+
+  const json = await res.json();
+  const data = (json.data || {}) as Partial<ApiOrderTracking>;
+  return {
+    orderId: data.orderId || orderId,
+    shipmentStatus: data.shipmentStatus ?? null,
+    carrier: data.carrier ?? null,
+    trackingNumber: data.trackingNumber ?? null,
+    estimatedDeliveryDate: data.estimatedDeliveryDate ?? null,
+    shippedAt: data.shippedAt ?? null,
+    deliveredAt: data.deliveredAt ?? null,
+    events: Array.isArray(data.events) ? data.events : [],
+  };
 }
 
 /**

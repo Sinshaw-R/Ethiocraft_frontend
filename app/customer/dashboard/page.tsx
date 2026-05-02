@@ -12,35 +12,59 @@ import Link from 'next/link'
 import { useAuth } from '@/lib/auth-context'
 import { useCart } from '@/lib/cart-context'
 import { getWishlistProductIds, toggleWishlistProduct } from '@/lib/wishlist'
+import { fetchOrders, ApiOrder } from '@/lib/api'
 import { toast } from 'react-toastify'
 
 export default function CustomerDashboard() {
   const { token } = useAuth()
   const { addItem } = useCart()
   const wishlistUserKey = token ?? 'guest'
-  const recentOrders = [
-    {
-      id: 'ORD-001',
-      date: 'Dec 15, 2024',
-      total: '$149.99',
-      status: 'Delivered',
-      items: 'Traditional Habesha Dress',
-    },
-    {
-      id: 'ORD-002',
-      date: 'Dec 10, 2024',
-      total: '$89.99',
-      status: 'Processing',
-      items: 'Hand-Woven Basket',
-    },
-    {
-      id: 'ORD-003',
-      date: 'Dec 5, 2024',
-      total: '$199.99',
-      status: 'Shipped',
-      items: 'Gold Filigree Jewelry',
-    },
-  ]
+  const [orders, setOrders] = useState<ApiOrder[]>([])
+  const [totalOrders, setTotalOrders] = useState<number>(0)
+  const [ordersLoading, setOrdersLoading] = useState(true)
+  const [ordersError, setOrdersError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!token) {
+      setOrders([])
+      setTotalOrders(0)
+      setOrdersLoading(false)
+      return
+    }
+
+    setOrdersLoading(true)
+    setOrdersError(null)
+
+    fetchOrders(token, { limit: 3 })
+      .then((response) => {
+        setOrders(response.items)
+        setTotalOrders(response.meta.total)
+      })
+      .catch((error) => {
+        console.error(error)
+        setOrdersError(error.message || 'Unable to load orders.')
+        setOrders([])
+        setTotalOrders(0)
+      })
+      .finally(() => setOrdersLoading(false))
+  }, [token])
+
+  const formatOrderDate = (createdAt: string) =>
+    new Date(createdAt).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    })
+
+  const getOrderLabel = (order: ApiOrder) => {
+    if (!order.items?.length) {
+      return 'No items available'
+    }
+    return order.items.map((item) => item.product.title).join(', ')
+  }
+
+  const getOrderTotal = (order: ApiOrder) =>
+    `${order.currency} ${order.totalAmount.toFixed(2)}`
 
   const catalogProducts = [
     {
@@ -100,7 +124,7 @@ export default function CustomerDashboard() {
       artisan: 'EthioCraft Artisan',
     },
   ]
-  const [wishlistIds, setWishlistIds] = useState<number[]>([])
+  const [wishlistIds, setWishlistIds] = useState<(string | number)[]>([])
 
   useEffect(() => {
     setWishlistIds(getWishlistProductIds(wishlistUserKey))
@@ -130,13 +154,18 @@ export default function CustomerDashboard() {
   }
 
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'Delivered':
+    const normalized = status?.toString()?.toUpperCase?.() ?? ''
+    switch (normalized) {
+      case 'DELIVERED':
         return 'bg-primary text-primary-foreground'
-      case 'Shipped':
+      case 'SHIPPED':
         return 'bg-secondary text-secondary-foreground'
-      case 'Processing':
+      case 'PROCESSING':
+      case 'PAID':
+      case 'PENDING_PAYMENT':
         return 'bg-muted text-muted-foreground'
+      case 'CANCELLED':
+        return 'bg-red-100 text-red-700'
       default:
         return 'bg-border text-foreground'
     }
@@ -163,7 +192,7 @@ export default function CustomerDashboard() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Total Orders</p>
-                  <p className="text-2xl font-bold">12</p>
+                  <p className="text-2xl font-bold">{ordersLoading ? '...' : totalOrders}</p>
                 </div>
               </div>
             </Card>
@@ -223,28 +252,45 @@ export default function CustomerDashboard() {
               </div>
 
               <div className="space-y-3">
-                {recentOrders.map((order) => (
-                  <Card key={order.id} className="p-4">
-                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                      <div>
-                        <p className="font-semibold">{order.items}</p>
-                        <p className="text-sm text-muted-foreground">Order {order.id}</p>
-                        <p className="text-sm text-muted-foreground">{order.date}</p>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <div>
-                          <p className="font-bold text-lg">{order.total}</p>
-                        </div>
-                        <Badge className={getStatusColor(order.status)}>{order.status}</Badge>
-                        <Link href={`/customer/orders/${order.id}`}>
-                          <Button variant="outline" size="sm">
-                            Details
-                          </Button>
-                        </Link>
-                      </div>
-                    </div>
+                {ordersLoading ? (
+                  <Card className="p-4">
+                    <p className="text-sm text-muted-foreground">Loading your recent orders...</p>
                   </Card>
-                ))}
+                ) : ordersError ? (
+                  <Card className="p-4 border-red-200 bg-red-50">
+                    <p className="text-sm text-red-700">{ordersError}</p>
+                  </Card>
+                ) : orders.length === 0 ? (
+                  <Card className="p-8 text-center">
+                    <p className="text-muted-foreground">No recent orders found.</p>
+                    <Link href="/products">
+                      <Button className="mt-4">Browse Products</Button>
+                    </Link>
+                  </Card>
+                ) : (
+                  orders.map((order) => (
+                    <Card key={order.id} className="p-4">
+                      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                        <div>
+                          <p className="font-semibold">{getOrderLabel(order)}</p>
+                          <p className="text-sm text-muted-foreground">Order {order.id}</p>
+                          <p className="text-sm text-muted-foreground">{formatOrderDate(order.createdAt)}</p>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <div>
+                            <p className="font-bold text-lg">{getOrderTotal(order)}</p>
+                          </div>
+                          <Badge className={getStatusColor(order.status)}>{order.status}</Badge>
+                          <Link href={`/customer/orders/${order.id}`}>
+                            <Button variant="outline" size="sm">
+                              Details
+                            </Button>
+                          </Link>
+                        </div>
+                      </div>
+                    </Card>
+                  ))
+                )}
               </div>
             </TabsContent>
 
@@ -275,27 +321,30 @@ export default function CustomerDashboard() {
                           <p className="text-lg font-bold text-secondary mt-2">${item.price}</p>
                           <div className="flex gap-2 mt-3">
                             <Button
-      size="sm"
-      className="flex-1 bg-primary"
-      onClick={() => handleAddWishlistItemToCart(item)}
-    >
-      Add to Cart
-    </Button>
-    <Button size="sm" variant="outline" onClick={() => handleRemoveWishlistItem(item.id, item.name)}>
-      Remove
-    </Button>
-  </div>
-                        </div >
-                      </div >
-                    </Card >
-                  ))
-}
-                </div >
+                              size="sm"
+                              className="flex-1 bg-primary"
+                              onClick={() => handleAddWishlistItemToCart(item)}
+                            >
+                              Add to Cart
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleRemoveWishlistItem(item.id, item.name)}
+                            >
+                              Remove
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
               )}
-            </TabsContent >
+            </TabsContent>
 
-  {/* Account Tab */ }
-  < TabsContent value = "account" className = "space-y-4" >
+            {/* Account Tab */}
+            <TabsContent value="account" className="space-y-4">
               <h2 className="text-xl font-semibold mb-4">Account Settings</h2>
 
               <Card className="p-6 space-y-4">
@@ -331,7 +380,7 @@ export default function CustomerDashboard() {
                 </div>
                 <Button variant="outline">Manage Addresses</Button>
               </Card>
-            </TabsContent >
+            </TabsContent>
           </Tabs >
         </div >
       </main >

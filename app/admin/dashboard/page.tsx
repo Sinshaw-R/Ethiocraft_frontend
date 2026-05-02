@@ -287,7 +287,22 @@ export default function App() {
     setFeedbackMessage(message);
     window.setTimeout(() => setFeedbackMessage(''), 2100);
   };
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('role');
+    localStorage.removeItem('authToken'); // in case auth context is used
+    localStorage.removeItem('authRole');
+    router.push('/auth/admin'); // redirect to admin login page
+  };
 
+  const handleProfileMenuClick = (entry: string) => {
+    setProfileMenuOpen(false);
+    if (entry === 'Sign out') {
+      handleLogout();
+    } else {
+      showFeedback(`Placeholder action: ${entry}`);
+    }
+  };
   const handleApprovalAction = (id: string, action: 'approve' | 'reject') => {
     const item = approvalItems.find((entry) => entry.id === id);
     if (!item) return;
@@ -516,10 +531,7 @@ export default function App() {
                   <button
                     key={entry}
                     className="w-full rounded-xl px-3 py-2 text-left text-sm transition hover:bg-[#f8f2e7]"
-                    onClick={() => {
-                      setProfileMenuOpen(false);
-                      showFeedback(`Placeholder action: ${entry}`);
-                    }}
+                    onClick={() => handleProfileMenuClick(entry)}
                   >
                     {entry}
                   </button>

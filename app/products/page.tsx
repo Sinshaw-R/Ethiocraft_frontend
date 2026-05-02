@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState, Suspense } from 'react';
+import { useEffect, useMemo, useState, Suspense, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Header } from '@/components/shared/header';
 import { Footer } from '@/components/shared/footer';
@@ -12,11 +12,12 @@ import { Heart } from 'lucide-react';
 import Link from 'next/link';
 import ChatSupport from '@/components/ChatSupport';
 import { toast } from 'react-toastify';
+import { fetchProducts, getProductImage, type ApiProductSummary } from '@/lib/api';
 
 type Product = {
-  id: number;
+  id: string;
   name: string;
-  category: 'Textiles' | 'Jewelry' | 'Home' | 'Accessories';
+  category: string;
   price: number;
   image: string;
   badge?: 'Handmade' | 'New';
@@ -24,97 +25,6 @@ type Product = {
   material?: string;
   rating: number;
 };
-
-// UC17 Submission Logic
-
-const products: Product[] = [
-  {
-    id: 1,
-    name: 'Habesha Cotton Dress',
-    category: 'Textiles',
-    price: 168,
-    image: 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=900&q=80',
-    badge: 'Handmade',
-    region: 'Amhara',
-    material: 'Cotton',
-    rating: 4.8,
-  },
-  {
-    id: 2,
-    name: 'Lalibela Filigree Earrings',
-    category: 'Jewelry',
-    price: 124,
-    image: 'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?auto=format&fit=crop&w=900&q=80',
-    badge: 'New',
-    region: 'Amhara',
-    material: 'Silver',
-    rating: 4.5,
-  },
-  {
-    id: 3,
-    name: 'Sidama Coffee Ceremony Set',
-    category: 'Home',
-    price: 210,
-    image: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=900&q=80',
-    badge: 'Handmade',
-    region: 'SNNPR',
-    material: 'Clay',
-    rating: 5.0,
-  },
-  {
-    id: 4,
-    name: 'Woven Mesob Basket',
-    category: 'Home',
-    price: 96,
-    image: 'https://images.unsplash.com/photo-1610701596061-2ecf227e85b2?auto=format&fit=crop&w=900&q=80',
-    region: 'Oromia',
-    material: 'Straw',
-    rating: 4.2,
-  },
-  {
-    id: 5,
-    name: 'Addis Leather Weekender',
-    category: 'Accessories',
-    price: 182,
-    image: 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?auto=format&fit=crop&w=900&q=80',
-    badge: 'New',
-    region: 'Addis Ababa',
-    material: 'Leather',
-    rating: 4.9,
-  },
-  {
-    id: 6,
-    name: 'Hand-Loomed Gabi Shawl',
-    category: 'Textiles',
-    price: 88,
-    image: 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=900&q=80',
-    badge: 'Handmade',
-    region: 'Addis Ababa',
-    material: 'Cotton',
-    rating: 4.7,
-  },
-  {
-    id: 7,
-    name: 'Axum Cross Pendant',
-    category: 'Jewelry',
-    price: 116,
-    image: 'https://images.unsplash.com/photo-1617038260897-41a1f14a8ca0?auto=format&fit=crop&w=900&q=80',
-    region: 'Tigray',
-    material: 'Silver',
-    rating: 4.6,
-  },
-  {
-    id: 8,
-    name: 'Harar Palm Tote',
-    category: 'Accessories',
-    price: 74,
-    image: 'https://images.unsplash.com/photo-1594223274512-ad4803739b7c?auto=format&fit=crop&w=900&q=80',
-    badge: 'Handmade',
-    region: 'Oromia',
-    material: 'Straw',
-    rating: 4.4,
-  },
-];
 
 const categories = ['All', 'Textiles', 'Jewelry', 'Home', 'Accessories'] as const;
 const regionsList = ['Addis Ababa', 'Oromia', 'SNNPR', 'Amhara', 'Tigray'];
@@ -135,9 +45,12 @@ function ProductPageContent() {
   const wishlistUserKey = token ?? 'guest';
   const [sortBy, setSortBy] = useState<'curated' | 'price-low' | 'price-high' | 'newest' | 'rating-high' | 'rating-low'>('curated');
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [visibleIds, setVisibleIds] = useState<number[]>([]);
-  const [wishlistIds, setWishlistIds] = useState<number[]>([]);
+  const [visibleIds, setVisibleIds] = useState<string[]>([]);
+  const [wishlistIds, setWishlistIds] = useState<Array<string | number>>([]);
   const [wishlistMessage, setWishlistMessage] = useState('');
+  const [products, setProducts] = useState<Product[]>([]);
+  const [isLoadingProducts, setIsLoadingProducts] = useState(true);
+  const [productFetchError, setProductFetchError] = useState('');
 
   // Filter States
   const [activeCategory, setActiveCategory] = useState<(typeof categories)[number]>('All');
@@ -148,23 +61,54 @@ function ProductPageContent() {
   const [priceRange, setPriceRange] = useState([0, 500]);
   const keyword = searchParams.get('q')?.trim().toLowerCase() ?? '';
 
+  // Reference for product grid container
+  const gridRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const loadProducts = async () => {
+      try {
+        setIsLoadingProducts(true);
+        const response = await fetchProducts({ limit: 100 });
+        const items = response.items;
+        const mappedProducts: Product[] = items.map((item: ApiProductSummary) => ({
+          id: item.id,
+          name: item.title,
+          category: item.category || 'Other',
+          price: item.price ?? 0,
+          image: getProductImage(item) || '/placeholder-product.jpg',
+          badge: item.publishedAt ? 'Handmade' : undefined,
+          region: item.artisan?.artisanProfile?.region || undefined,
+          material: item.materials?.[0] || undefined,
+          rating: item._count?.reviews ? 5 : 4.5,
+        }));
+        setProducts(mappedProducts);
+        setProductFetchError('');
+      } catch (error) {
+        console.error('Failed to load products', error);
+        setProducts([]);
+        setProductFetchError('Failed to load products from backend.');
+      } finally {
+        setIsLoadingProducts(false);
+      }
+    };
+
+    loadProducts();
+  }, []);
+
   // Initialize filters from URL params
   useEffect(() => {
     const category = searchParams.get('category');
     if (category && categories.includes(category as any)) {
       setActiveCategory(category as any);
     }
-
     const region = searchParams.get('region');
     if (region && regionsList.includes(region)) {
       setSelectedRegions([region]);
     }
-
     const material = searchParams.get('material');
     if (material && materialsList.includes(material)) {
       setSelectedMaterials([material]);
     }
-
     const minPrice = searchParams.get('minPrice');
     const maxPrice = searchParams.get('maxPrice');
     if (minPrice && maxPrice) {
@@ -172,6 +116,7 @@ function ProductPageContent() {
     }
   }, [searchParams]);
 
+  // FILTER LOGIC - Shows all products by default, filters only when user applies them
   const filteredProducts = useMemo(() => {
     // 1. Apply Filters
     let base = products
@@ -180,7 +125,11 @@ function ProductPageContent() {
       .filter((product) => (showHandmadeOnly ? product.badge === 'Handmade' : true))
       .filter((product) => product.price >= priceRange[0] && product.price <= priceRange[1])
       .filter((product) => selectedRegions.length === 0 || (product.region && selectedRegions.includes(product.region)))
-      .filter((product) => selectedMaterials.length === 0 || (product.material && selectedMaterials.includes(product.material)))
+      .filter(
+        (product) =>
+          selectedMaterials.length === 0 ||
+          (product.material && selectedMaterials.includes(product.material)),
+      )
       .filter((product) => {
         if (!keyword) return true;
         const searchable = `${product.name} ${product.category} ${product.region ?? ''} ${product.material ?? ''}`.toLowerCase();
@@ -201,29 +150,33 @@ function ProductPageContent() {
     }
 
     return base; // 'curated' default
-  }, [activeCategory, showHandmadeOnly, showNewOnly, sortBy, priceRange, selectedRegions, selectedMaterials, keyword]);
+  }, [activeCategory, showHandmadeOnly, showNewOnly, sortBy, priceRange, selectedRegions, selectedMaterials, keyword, products]);
 
+  // Intersection Observer for staggered animations
   useEffect(() => {
     setVisibleIds([]);
+    
+    if (!gridRef.current) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
-            const productId = Number(entry.target.getAttribute('data-product-id'));
+            const productId = String(entry.target.getAttribute('data-product-id'));
             setVisibleIds((prev) => (prev.includes(productId) ? prev : [...prev, productId]));
           }
         });
       },
-      { threshold: 0.18 },
+      { threshold: 0.15 }
     );
 
-    const items = document.querySelectorAll('[data-product-id]');
+    const items = gridRef.current.querySelectorAll('[data-product-id]');
     items.forEach((item) => observer.observe(item));
 
     return () => observer.disconnect();
   }, [filteredProducts]);
 
+  // Wishlist sync
   useEffect(() => {
     setWishlistIds(getWishlistProductIds(wishlistUserKey));
   }, [wishlistUserKey]);
@@ -247,7 +200,7 @@ function ProductPageContent() {
     setState(state.includes(item) ? state.filter((i) => i !== item) : [...state, item]);
   };
 
-  const handleWishlistToggle = (event: React.MouseEvent<HTMLButtonElement>, productId: number) => {
+  const handleWishlistToggle = (event: React.MouseEvent<HTMLButtonElement>, productId: string) => {
     event.preventDefault();
     event.stopPropagation();
 
@@ -270,7 +223,15 @@ function ProductPageContent() {
     toast.success(`${product.name} added to cart`);
   };
 
-  const hasActiveFilters = activeCategory !== 'All' || showNewOnly || showHandmadeOnly || selectedRegions.length > 0 || selectedMaterials.length > 0 || priceRange[0] > 0 || priceRange[1] < 500;
+  const hasActiveFilters =
+    activeCategory !== 'All' ||
+    showNewOnly ||
+    showHandmadeOnly ||
+    selectedRegions.length > 0 ||
+    selectedMaterials.length > 0 ||
+    priceRange[0] > 0 ||
+    priceRange[1] < 500 ||
+    Boolean(keyword);
 
   return (
     <div className="min-h-screen bg-[#FAFAF9] text-[#1C1C1C]">
@@ -292,6 +253,9 @@ function ProductPageContent() {
                 Search: "{searchParams.get('q')}"
               </p>
             )}
+            <p className="mt-1 text-xs text-[#7a746d]">
+              Showing {filteredProducts.length} of {products.length} products
+            </p>
           </div>
 
           <div className="flex items-center gap-3" style={{ fontFamily: 'Aeonik, Inter, sans-serif' }}>
@@ -324,9 +288,20 @@ function ProductPageContent() {
             {wishlistMessage}
           </p>
         )}
+        {isLoadingProducts && (
+          <p className="mb-5 border border-[#ddd8cf] bg-[#f8f6f1] px-4 py-2 text-xs uppercase tracking-wider text-[#5f5b55]">
+            Loading products from backend...
+          </p>
+        )}
+        {productFetchError && (
+          <p className="mb-5 border border-[#e0b7b7] bg-[#fff5f5] px-4 py-2 text-xs uppercase tracking-wider text-[#8d3a3a]">
+            {productFetchError}
+          </p>
+        )}
 
+        {/* Product Grid - Shows all products initially, filters when user applies them */}
         {filteredProducts.length === 0 ? (
-          <section key="empty-products" className="py-20 text-center">
+          <section className="py-20 text-center">
             <p className="text-lg">No pieces found for this selection.</p>
             <button
               onClick={resetFilters}
@@ -337,7 +312,10 @@ function ProductPageContent() {
             </button>
           </section>
         ) : (
-          <section key="product-grid" className="grid grid-cols-2 gap-x-6 gap-y-12 md:grid-cols-3 md:gap-x-9 md:gap-y-16 xl:grid-cols-4">
+          <section 
+            ref={gridRef}
+            className="grid grid-cols-2 gap-x-6 gap-y-12 md:grid-cols-3 md:gap-x-9 md:gap-y-16 xl:grid-cols-4"
+          >
             {filteredProducts.map((product, index) => {
               const isVisible = visibleIds.includes(product.id);
               return (
@@ -389,7 +367,6 @@ function ProductPageContent() {
                   </div>
 
                   <div className="pt-4">
-                    {/* ADDED RATING HERE */}
                     <div className="flex items-center justify-between">
                       <p className="text-[11px] uppercase tracking-[0.1em] text-[#7a746d]">{product.category}</p>
                       <div className="flex items-center gap-1 text-[11px] text-[#C6A75E]">
@@ -427,11 +404,11 @@ function ProductPageContent() {
         )}
       </main>
 
+      {/* Filter Drawer */}
       <div
         className={`fixed inset-0 z-40 bg-black/25 transition-opacity duration-300 ${drawerOpen ? 'opacity-100' : 'pointer-events-none opacity-0'}`}
         onClick={() => setDrawerOpen(false)}
       />
-
       <aside
         className={`fixed right-0 top-0 z-50 h-full w-[320px] overflow-y-auto border-l border-[#e8e0d1] bg-[#FAFAF9] px-6 py-8 transition-transform duration-[400ms] ${drawerOpen ? 'translate-x-0' : 'translate-x-full'}`}
       >
@@ -532,6 +509,7 @@ function ProductPageContent() {
           </button>
         </div>
       </aside>
+
       <ChatSupport />
       <Footer />
     </div>

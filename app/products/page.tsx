@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState, Suspense } from 'react';
+import { useEffect, useMemo, useState, Suspense, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Header } from '@/components/shared/header';
 import { Footer } from '@/components/shared/footer';
@@ -61,20 +61,24 @@ function ProductPageContent() {
   const [priceRange, setPriceRange] = useState([0, 500]);
   const keyword = searchParams.get('q')?.trim().toLowerCase() ?? '';
 
+  // Reference for product grid container
+  const gridRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     const loadProducts = async () => {
       try {
         setIsLoadingProducts(true);
         const response = await fetchProducts({ limit: 100 });
-        const mappedProducts: Product[] = response.items.map((item: ApiProductSummary) => ({
+        const items = response.items;
+        const mappedProducts: Product[] = items.map((item: ApiProductSummary) => ({
           id: item.id,
           name: item.title,
-          category: item.category,
-          price: item.price,
-          image: getProductImage(item),
-          badge: item.publishedAt ? ('Handmade' as const) : undefined,
+          category: item.category || 'Other',
+          price: item.price ?? 0,
+          image: getProductImage(item) || '/placeholder-product.jpg',
+          badge: item.publishedAt ? 'Handmade' : undefined,
           region: item.artisan?.artisanProfile?.region || undefined,
-          material: item.materials?.[0],
+          material: item.materials?.[0] || undefined,
           rating: item._count?.reviews ? 5 : 4.5,
         }));
         setProducts(mappedProducts);
@@ -97,17 +101,14 @@ function ProductPageContent() {
     if (category && categories.includes(category as any)) {
       setActiveCategory(category as any);
     }
-
     const region = searchParams.get('region');
     if (region && regionsList.includes(region)) {
       setSelectedRegions([region]);
     }
-
     const material = searchParams.get('material');
     if (material && materialsList.includes(material)) {
       setSelectedMaterials([material]);
     }
-
     const minPrice = searchParams.get('minPrice');
     const maxPrice = searchParams.get('maxPrice');
     if (minPrice && maxPrice) {
@@ -115,6 +116,7 @@ function ProductPageContent() {
     }
   }, [searchParams]);
 
+  // FILTER LOGIC - Shows all products by default, filters only when user applies them
   const filteredProducts = useMemo(() => {
     // 1. Apply Filters
     let base = products
@@ -126,8 +128,7 @@ function ProductPageContent() {
       .filter(
         (product) =>
           selectedMaterials.length === 0 ||
-          !product.material ||
-          selectedMaterials.includes(product.material),
+          (product.material && selectedMaterials.includes(product.material)),
       )
       .filter((product) => {
         if (!keyword) return true;
@@ -149,10 +150,13 @@ function ProductPageContent() {
     }
 
     return base; // 'curated' default
-  }, [activeCategory, showHandmadeOnly, showNewOnly, sortBy, priceRange, selectedRegions, selectedMaterials, keyword]);
+  }, [activeCategory, showHandmadeOnly, showNewOnly, sortBy, priceRange, selectedRegions, selectedMaterials, keyword, products]);
 
+  // Intersection Observer for staggered animations
   useEffect(() => {
     setVisibleIds([]);
+    
+    if (!gridRef.current) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -163,15 +167,16 @@ function ProductPageContent() {
           }
         });
       },
-      { threshold: 0.18 },
+      { threshold: 0.15 }
     );
 
-    const items = document.querySelectorAll('[data-product-id]');
+    const items = gridRef.current.querySelectorAll('[data-product-id]');
     items.forEach((item) => observer.observe(item));
 
     return () => observer.disconnect();
   }, [filteredProducts]);
 
+  // Wishlist sync
   useEffect(() => {
     setWishlistIds(getWishlistProductIds(wishlistUserKey));
   }, [wishlistUserKey]);
@@ -218,7 +223,15 @@ function ProductPageContent() {
     toast.success(`${product.name} added to cart`);
   };
 
-  const hasActiveFilters = activeCategory !== 'All' || showNewOnly || showHandmadeOnly || selectedRegions.length > 0 || selectedMaterials.length > 0 || priceRange[0] > 0 || priceRange[1] < 500;
+  const hasActiveFilters =
+    activeCategory !== 'All' ||
+    showNewOnly ||
+    showHandmadeOnly ||
+    selectedRegions.length > 0 ||
+    selectedMaterials.length > 0 ||
+    priceRange[0] > 0 ||
+    priceRange[1] < 500 ||
+    Boolean(keyword);
 
   return (
     <div className="min-h-screen bg-[#FAFAF9] text-[#1C1C1C]">
@@ -240,6 +253,9 @@ function ProductPageContent() {
                 Search: "{searchParams.get('q')}"
               </p>
             )}
+            <p className="mt-1 text-xs text-[#7a746d]">
+              Showing {filteredProducts.length} of {products.length} products
+            </p>
           </div>
 
           <div className="flex items-center gap-3" style={{ fontFamily: 'Aeonik, Inter, sans-serif' }}>
@@ -283,8 +299,9 @@ function ProductPageContent() {
           </p>
         )}
 
+        {/* Product Grid - Shows all products initially, filters when user applies them */}
         {filteredProducts.length === 0 ? (
-          <section key="empty-products" className="py-20 text-center">
+          <section className="py-20 text-center">
             <p className="text-lg">No pieces found for this selection.</p>
             <button
               onClick={resetFilters}
@@ -295,7 +312,10 @@ function ProductPageContent() {
             </button>
           </section>
         ) : (
-          <section key="product-grid" className="grid grid-cols-2 gap-x-6 gap-y-12 md:grid-cols-3 md:gap-x-9 md:gap-y-16 xl:grid-cols-4">
+          <section 
+            ref={gridRef}
+            className="grid grid-cols-2 gap-x-6 gap-y-12 md:grid-cols-3 md:gap-x-9 md:gap-y-16 xl:grid-cols-4"
+          >
             {filteredProducts.map((product, index) => {
               const isVisible = visibleIds.includes(product.id);
               return (
@@ -347,7 +367,6 @@ function ProductPageContent() {
                   </div>
 
                   <div className="pt-4">
-                    {/* ADDED RATING HERE */}
                     <div className="flex items-center justify-between">
                       <p className="text-[11px] uppercase tracking-[0.1em] text-[#7a746d]">{product.category}</p>
                       <div className="flex items-center gap-1 text-[11px] text-[#C6A75E]">
@@ -385,11 +404,11 @@ function ProductPageContent() {
         )}
       </main>
 
+      {/* Filter Drawer */}
       <div
         className={`fixed inset-0 z-40 bg-black/25 transition-opacity duration-300 ${drawerOpen ? 'opacity-100' : 'pointer-events-none opacity-0'}`}
         onClick={() => setDrawerOpen(false)}
       />
-
       <aside
         className={`fixed right-0 top-0 z-50 h-full w-[320px] overflow-y-auto border-l border-[#e8e0d1] bg-[#FAFAF9] px-6 py-8 transition-transform duration-[400ms] ${drawerOpen ? 'translate-x-0' : 'translate-x-full'}`}
       >
@@ -490,6 +509,7 @@ function ProductPageContent() {
           </button>
         </div>
       </aside>
+
       <ChatSupport />
       <Footer />
     </div>

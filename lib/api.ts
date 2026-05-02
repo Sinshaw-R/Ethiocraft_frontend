@@ -78,6 +78,41 @@ export type ProductListResponse = {
   meta: PaginationMeta;
 };
 
+export type ApiOrderItem = {
+  id: string;
+  productId: string;
+  quantity: number;
+  unitPrice: number;
+  lineTotal: number;
+  product: {
+    id: string;
+    title: string;
+    slug: string;
+  };
+};
+
+export type ApiOrder = {
+  id: string;
+  status: string;
+  subtotalAmount: number;
+  shippingFee: number;
+  totalAmount: number;
+  currency: string;
+  createdAt: string;
+  items: ApiOrderItem[];
+};
+
+export type OrderListParams = {
+  page?: number;
+  limit?: number;
+  status?: string;
+};
+
+export type OrderListResponse = {
+  items: ApiOrder[];
+  meta: PaginationMeta;
+};
+
 // ─── Query params for product list ───────────────────────────────────────────
 
 export type ProductListParams = {
@@ -153,6 +188,32 @@ export async function fetchProductById(
   const json = await res.json();
   // Backend returns: { message: string, data: { ...product } }
   return json.data as ApiProductDetail;
+}
+
+export async function fetchOrders(
+  token: string,
+  params: OrderListParams = {}
+): Promise<OrderListResponse> {
+  const url = new URL(`${BASE_URL}/orders`);
+
+  if (params.page) url.searchParams.set("page", String(params.page));
+  if (params.limit) url.searchParams.set("limit", String(params.limit));
+  if (params.status) url.searchParams.set("status", params.status);
+
+  const res = await fetch(url.toString(), {
+    cache: "no-store",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.message || `Failed to fetch orders: ${res.status}`);
+  }
+
+  const json = await res.json();
+  return json.data as OrderListResponse;
 }
 
 /**

@@ -4,7 +4,7 @@ function keyForUser(userKey: string): string {
   return `${WISHLIST_KEY_PREFIX}${userKey}`
 }
 
-export function getWishlistProductIds(userKey: string): number[] {
+export function getWishlistProductIds(userKey: string): Array<string | number> {
   if (typeof window === "undefined") return []
 
   const raw = localStorage.getItem(keyForUser(userKey))
@@ -13,20 +13,20 @@ export function getWishlistProductIds(userKey: string): number[] {
   try {
     const parsed = JSON.parse(raw)
     if (!Array.isArray(parsed)) return []
-    return parsed.filter((id) => Number.isInteger(id))
+    return parsed.filter((id) => typeof id === "number" || typeof id === "string")
   } catch {
     return []
   }
 }
 
-export function isWishlisted(userKey: string, productId: number): boolean {
+export function isWishlisted(userKey: string, productId: string | number): boolean {
   return getWishlistProductIds(userKey).includes(productId)
 }
 
 export function toggleWishlistProduct(
   userKey: string,
-  productId: number,
-): { ids: number[]; added: boolean } {
+  productId: string | number,
+): { ids: Array<string | number>; added: boolean } {
   const current = getWishlistProductIds(userKey)
   const exists = current.includes(productId)
   const next = exists

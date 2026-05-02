@@ -15,12 +15,14 @@ import {
     ShieldAlert,
     ShoppingBag,
     UserCheck,
+    Box,
+    ClipboardCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Role = "customer" | "artisan" | "agent" | "admin";
 type Status = "active" | "suspended";
-type TabKey = "activity" | "orders" | "notes";
+type TabKey = "activity" | "orders" | "notes" | "tasks";
 
 type Note = {
     id: number;
@@ -100,6 +102,7 @@ const tabs: { key: TabKey; label: string }[] = [
     { key: "activity", label: "Activity" },
     { key: "orders", label: "Orders" },
     { key: "notes", label: "Notes" },
+    { key: "tasks", label: "Agent Tasks" },
 ];
 
 function statusStyles(status: Status) {
@@ -136,6 +139,11 @@ export default function UserDetailPage() {
     const [ordersPage, setOrdersPage] = useState(1);
     const [roleDetailsLoading, setRoleDetailsLoading] = useState(false);
 
+    // Agent Tasks states
+    const [assignMode, setAssignMode] = useState(false);
+    const [agentTasks, setAgentTasks] = useState<any[]>([]);
+    const [unassignedSamples, setUnassignedSamples] = useState<any[]>([]);
+
     const [notes, setNotes] = useState<Note[]>([
         {
             id: 1,
@@ -151,6 +159,31 @@ export default function UserDetailPage() {
         },
     ]);
     const [adminLogs, setAdminLogs] = useState<ActivityLog[]>([]);
+
+    // Fetch Agent Tasks
+    useEffect(() => {
+        if (activeTab === "tasks" && role === "agent") {
+            const fetchTasks = async () => {
+                try {
+                    const base = (process.env.NEXT_PUBLIC_BASE_URL ?? '').replace(/\/$/, '') || 'http://localhost:4000/api/v1';
+                    const token = localStorage.getItem('token');
+                    const res = await fetch(`${base}/admin/products/samples`, {
+                        headers: { Authorization: `Bearer ${token}` }
+                    });
+                    if (!res.ok) return;
+                    const data = await res.json();
+                    if (data.data?.items) {
+                        const samples = data.data.items;
+                        setAgentTasks(samples.filter((s: any) => s.assignedVerifierId === id));
+                        setUnassignedSamples(samples.filter((s: any) => s.status === 'APPROVED' && !s.assignedVerifierId));
+                    }
+                } catch (err) {
+                    console.error("Failed to fetch tasks", err);
+                }
+            };
+            fetchTasks();
+        }
+    }, [activeTab, role, id]);
 
     // Fetch orders when Orders tab becomes active
     useEffect(() => {
@@ -385,6 +418,34 @@ export default function UserDetailPage() {
         showToast("Note deleted");
     };
 
+    const assignSample = async (sampleId: string) => {
+        try {
+            const base = (process.env.NEXT_PUBLIC_BASE_URL ?? '').replace(/\/$/, '') || 'http://localhost:4000/api/v1';
+            const token = localStorage.getItem('token');
+            const res = await fetch(`${base}/admin/products/samples/${sampleId}`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({ assignedVerifierId: id })
+            });
+            if (!res.ok) throw new Error('Failed to assign task');
+            
+            showToast('Task assigned successfully');
+            pushLog(`Admin assigned verification task (Sample ID: ${sampleId})`, "success");
+            
+            const sample = unassignedSamples.find(s => s.id === sampleId);
+            if (sample) {
+                setUnassignedSamples(prev => prev.filter(s => s.id !== sampleId));
+                setAgentTasks(prev => [{...sample, assignedVerifierId: id}, ...prev]);
+            }
+        } catch (error) {
+            console.error(error);
+            showToast('Failed to assign task');
+        }
+    };
+
     const insightItems = [
         {
             label: "Joined",
@@ -473,10 +534,7 @@ export default function UserDetailPage() {
 
                         <div className="flex flex-wrap gap-2">
                             <button
-                                onClick={() => {
-                                    pushLog("Admin opened user edit panel.");
-                                    showToast("User editor opened");
-                                }}
+                                onClick={() => router.push(`/admin/users/${id}/edit`)}
                                 className="inline-flex items-center gap-1.5 rounded-xl border border-neutral-200 bg-white px-4 py-2 text-xs transition duration-300 hover:-translate-y-1 hover:shadow-md"
                             >
                                 <Pencil className="h-3.5 w-3.5" /> Edit User
@@ -672,10 +730,11 @@ export default function UserDetailPage() {
                                 </div>
                                 <div className="mt-8 flex flex-wrap gap-3 text-[11px] font-bold uppercase tracking-wider">
                                     <button
-                                        className="rounded-lg bg-[#3E2723] px-5 py-2.5 text-white shadow-lg"
+                                        className="rounded-lg bg-[#3E2723] px-5 py-2.5 text-white shadow-lg transition hover:opacity-90"
                                         onClick={() => {
-                                            pushLog("Admin action: Assign New Verification.");
-                                            router.push('/admin/sample');
+                                            pushLog("Admin action: Opened Assign New Verification.");
+                                            setActiveTab("tasks");
+                                            setAssignMode(true);
                                         }}
                                     >
                                         Assign New Verification
@@ -683,8 +742,9 @@ export default function UserDetailPage() {
                                     <button
                                         className="rounded-lg border border-neutral-200 px-5 py-2.5 transition hover:bg-neutral-50"
                                         onClick={() => {
-                                            pushLog("Admin action: View Assigned Tasks.");
-                                            router.push('/admin/sample');
+                                            pushLog("Admin action: Opened View Assigned Tasks.");
+                                            setActiveTab("tasks");
+                                            setAssignMode(false);
                                         }}
                                     >
                                         View All Tasks
@@ -722,7 +782,11 @@ export default function UserDetailPage() {
 
                         <article className="overflow-hidden rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm">
                             <div className="mb-6 flex flex-wrap gap-7 border-b border-neutral-100 pb-4">
-                                {tabs.map((tab) => (
+                                {tabs.filter(t => {
+                                    if (t.key === "orders") return role === "customer";
+                                    if (t.key === "tasks") return role === "agent";
+                                    return true;
+                                }).map((tab) => (
                                     <button
                                         key={tab.key}
                                         onClick={() => setActiveTab(tab.key)}
@@ -903,6 +967,82 @@ export default function UserDetailPage() {
                                                 </div>
                                             ))}
                                         </div>
+                                    </div>
+                                )}
+
+                                {activeTab === "tasks" && role === "agent" && (
+                                    <div className="mt-2 space-y-6">
+                                        <div className="flex justify-between items-center mb-4">
+                                            <h3 className="text-sm font-bold uppercase tracking-widest text-neutral-400">
+                                                {assignMode ? "Assign New Task" : "Assigned Tasks"}
+                                            </h3>
+                                            <button 
+                                                onClick={() => setAssignMode(!assignMode)}
+                                                className="text-[10px] font-bold text-[#C6A75E] uppercase hover:underline"
+                                            >
+                                                {assignMode ? "Switch to View Tasks" : "Switch to Assign Tasks"}
+                                            </button>
+                                        </div>
+                                        
+                                        {assignMode ? (
+                                            <div className="rounded-2xl border border-neutral-100 bg-white p-5 shadow-sm">
+                                               <p className="text-xs text-neutral-500 mb-4">Select an approved sample to assign to this agent for verification.</p>
+                                               <div className="space-y-3">
+                                                  {unassignedSamples.length === 0 ? (
+                                                      <div className="flex flex-col items-center justify-center py-10 text-neutral-400">
+                                                          <ClipboardCheck className="mb-3 h-10 w-10 opacity-30" />
+                                                          <p className="text-xs italic font-bold uppercase tracking-widest">No unassigned tasks available</p>
+                                                      </div>
+                                                  ) : (
+                                                      unassignedSamples.map(sample => (
+                                                          <div key={sample.id} className="flex justify-between items-center p-4 border border-neutral-100 rounded-xl hover:bg-neutral-50 transition">
+                                                              <div>
+                                                                  <p className="font-bold text-sm text-[#2D2620]">{sample.title}</p>
+                                                                  <p className="text-xs text-neutral-400 mt-1 uppercase tracking-wider">{sample.artisan?.shopName || 'Unknown Artisan'}</p>
+                                                              </div>
+                                                              <button 
+                                                                  onClick={() => assignSample(sample.id)}
+                                                                  className="rounded-lg bg-[#C6A75E] px-4 py-2 text-[10px] font-bold uppercase text-white hover:opacity-90 shadow-sm transition"
+                                                              >
+                                                                  Assign Task
+                                                              </button>
+                                                          </div>
+                                                      ))
+                                                  )}
+                                               </div>
+                                            </div>
+                                        ) : (
+                                            <div className="rounded-2xl border border-neutral-100 bg-white p-5 shadow-sm">
+                                               {agentTasks.length === 0 ? (
+                                                   <div className="flex flex-col items-center justify-center py-10 text-neutral-400">
+                                                       <Box className="mb-3 h-10 w-10 opacity-30" />
+                                                       <p className="text-xs italic font-bold uppercase tracking-widest">No tasks currently assigned</p>
+                                                   </div>
+                                               ) : (
+                                                   <div className="space-y-3">
+                                                       {agentTasks.map(task => (
+                                                           <div key={task.id} className="p-4 border border-neutral-100 rounded-xl hover:bg-neutral-50 transition flex justify-between items-start">
+                                                              <div>
+                                                                  <p className="font-bold text-sm text-[#2D2620]">{task.title}</p>
+                                                                  <div className="flex items-center gap-2 mt-2">
+                                                                      <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-100">
+                                                                          {task.status}
+                                                                      </span>
+                                                                      <span className="text-xs text-neutral-400">{new Date(task.createdAt).toLocaleDateString()}</span>
+                                                                  </div>
+                                                              </div>
+                                                              <button 
+                                                                  onClick={() => router.push(`/admin/sample/${task.id}`)}
+                                                                  className="text-[10px] font-bold uppercase text-neutral-400 hover:text-[#C6A75E] transition"
+                                                              >
+                                                                  View Details
+                                                              </button>
+                                                           </div>
+                                                       ))}
+                                                   </div>
+                                               )}
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                             </div>

@@ -138,6 +138,8 @@ export default function App() {
   const [rejectReason, setRejectReason] = useState('');
   const [showRequestMediaModal, setShowRequestMediaModal] = useState(false);
   const [requestMessage, setRequestMessage] = useState('');
+  const [showApproveModal, setShowApproveModal] = useState(false);
+  const [approveNotes, setApproveNotes] = useState('');
   const [activity, setActivity] = useState<string[]>([
     'Artisan submitted sample - 2026-04-10 09:48',
     'Admin opened review panel - 2026-04-17 10:12',
@@ -296,7 +298,7 @@ export default function App() {
         },
         body: JSON.stringify({
           decision,
-          submissionNotes: notes || ''
+          notes: notes || ''
         })
       });
       if (!res.ok) throw new Error('Failed to update status');
@@ -309,13 +311,17 @@ export default function App() {
     }
   };
 
-  const approveSample = async () => {
+  const approveSample = () => {
     if (status === 'NEEDS_MORE_MEDIA') return showToast('Waiting for artisan resubmission');
-    if (!hasRequiredMetadata) return showToast('Required metadata is missing');
+    setShowApproveModal(true);
+  };
 
-    const res = await updateSampleStatus('APPROVE');
+  const confirmApprove = async () => {
+    const res = await updateSampleStatus('APPROVE', approveNotes);
     if (res) {
       setStatus('APPROVED');
+      setShowApproveModal(false);
+      setApproveNotes('');
       addActivity('Admin approved sample');
       showToast('Sample approved successfully');
     }
@@ -741,6 +747,19 @@ export default function App() {
             <div className="mt-4 flex justify-end gap-2 text-sm" style={{ fontFamily: 'Aeonik, Inter, sans-serif' }}>
               <button className="rounded-xl border border-neutral-200 px-3 py-2" onClick={() => setShowRequestMediaModal(false)}>Cancel</button>
               <button className="rounded-xl border border-orange-200 bg-orange-50 px-3 py-2 text-orange-700" onClick={requestMoreMedia}>Send Request</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showApproveModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setShowApproveModal(false)}>
+          <div className="w-full max-w-md rounded-2xl border border-neutral-200 bg-white p-5 shadow-md" onClick={(event) => event.stopPropagation()}>
+            <h3 className="text-lg uppercase tracking-[0.04em]" style={{ fontFamily: '"Druk Wide", "Arial Black", sans-serif' }}>Approve Sample</h3>
+            <textarea value={approveNotes} onChange={(event) => setApproveNotes(event.target.value)} rows={4} placeholder="Add approval notes (optional)" className="mt-3 w-full rounded-xl border border-neutral-200 px-3 py-2 text-sm outline-none focus:border-[#C6A75E]" />
+            <div className="mt-4 flex justify-end gap-2 text-sm" style={{ fontFamily: 'Aeonik, Inter, sans-serif' }}>
+              <button className="rounded-xl border border-neutral-200 px-3 py-2" onClick={() => setShowApproveModal(false)}>Cancel</button>
+              <button className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-emerald-700" onClick={confirmApprove}>Confirm Approve</button>
             </div>
           </div>
         </div>

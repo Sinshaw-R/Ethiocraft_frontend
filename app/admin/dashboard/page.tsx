@@ -40,7 +40,6 @@ import OrdersSection from '@/components/ui/navSections/OrdersSection';
 import ApprovalsSection from '@/components/ui/navSections/ApprovalsSection';
 import GenericSection from '@/components/ui/navSections/GenericSection';
 import SamplesSection from '@/components/ui/navSections/SamplesSection';
-import VerificationTasksSection from '@/components/ui/navSections/VerificationTasksSection';
 import AgentsSection from '@/components/ui/navSections/AgentsSection';
 /* Admin Dashboard Overview
  - This component composes the main admin interface and several panels.
@@ -178,6 +177,8 @@ export default function App() {
       router.push('/admin/report');
     } else if (nav === 'Settings') {
       router.push('/admin/setting');
+    } else if (nav === 'Verification Tasks') {
+      router.push('/admin/verification_task');
     } else {
       setActiveNav(nav);
     }
@@ -536,7 +537,6 @@ export default function App() {
             Samples: SamplesSection,
             Products: ProductsSection,
             Orders: OrdersSection,
-            'Verification Tasks': VerificationTasksSection,
             Agents: AgentsSection,
             Approvals: ApprovalsSection,
           };

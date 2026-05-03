@@ -167,6 +167,10 @@ export type ProductListParams = {
   sortBy?: "price_asc" | "price_desc" | "oldest" | "newest";
   page?: number;
   limit?: number;
+  /** Artisan profile region(s); duplicates become repeated `region=` query keys. */
+  regions?: string[];
+  /** Product materials array must include at least one of these (OR). */
+  materials?: string[];
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -200,6 +204,12 @@ export async function fetchProducts(
   if (params.sortBy) url.searchParams.set("sortBy", params.sortBy);
   if (params.page) url.searchParams.set("page", String(params.page));
   if (params.limit) url.searchParams.set("limit", String(params.limit));
+  params.regions?.forEach((region) =>
+    url.searchParams.append("region", region),
+  );
+  params.materials?.forEach((material) =>
+    url.searchParams.append("material", material),
+  );
 
   const res = await fetch(url.toString(), { cache: "no-store" });
 

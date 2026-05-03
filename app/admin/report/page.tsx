@@ -1,5 +1,5 @@
 "use client"
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useCallback } from "react";
 import {
   BarChart3,
   Bell,
@@ -35,11 +35,63 @@ type ReportRow = {
   amount: number;
   date: string;
   region: string;
+  role: string;
 };
 
 type HeaderFilter = "all" | "role" | "status" | "region";
 
+type ReportPreset = {
+  id: string;
+  name: string;
+  description: string;
+  reportType: ReportType;
+  dateRange: DateRange;
+  icon?: any;
+};
 
+/** One-click shortcuts: only adjust report type + date range (no server-side “saved” entity). */
+const REPORT_PRESETS: ReportPreset[] = [
+  {
+    id: "orders-7d",
+    name: "Recent orders",
+    description: "Orders created in the last 7 days (table above uses live API data).",
+    reportType: "orders",
+    dateRange: "7d",
+    icon: ShoppingCart,
+  },
+  {
+    id: "revenue-30d",
+    name: "Revenue snapshot",
+    description: "Top artisans by line revenue over the last 30 days.",
+    reportType: "revenue",
+    dateRange: "30d",
+    icon: Gem,
+  },
+  {
+    id: "artisans-30d",
+    name: "Artisan performance",
+    description: "Same revenue basis as analytics; sorted by sales in range.",
+    reportType: "artisans",
+    dateRange: "30d",
+    icon: Users,
+  },
+  {
+    id: "agents-7d",
+    name: "Agent workload",
+    description: "Samples assigned in the last 7 days per verification agent.",
+    reportType: "agents",
+    dateRange: "7d",
+    icon: BarChart3,
+  },
+  {
+    id: "users-roster",
+    name: "Account roster",
+    description: "Latest registered users with lifetime order counts (not filtered by the date range).",
+    reportType: "users",
+    dateRange: "30d",
+    icon: FileText,
+  },
+];
 
 const reportTypeOptions: { value: ReportType; label: string }[] = [
   { value: "orders", label: "Orders" },
@@ -51,48 +103,35 @@ const reportTypeOptions: { value: ReportType; label: string }[] = [
 
 const regions = ["Addis Ababa", "Oromia", "Amhara", "Sidama", "Tigray"];
 const roles = ["Customer", "Artisan", "Agent", "Admin"];
-const statuses = ["Active", "Pending", "Suspended", "Completed", "Cancelled"];
+const statuses = ["Active", "Pending", "Suspended", "Completed", "Cancelled", "Paid", "Processing", "Shipped"];
 
-const reportDataset: Record<ReportType, ReportRow[]> = {
-  orders: [
-    { id: "ORD-22109", name: "Mekdes Bekele", status: "Completed", amount: 4200, date: "2026-04-20", region: "Addis Ababa" },
-    { id: "ORD-22110", name: "Abel Lemma", status: "Completed", amount: 6900, date: "2026-04-20", region: "Oromia" },
-    { id: "ORD-22111", name: "Hanna Asefa", status: "Pending", amount: 1850, date: "2026-04-19", region: "Amhara" },
-    { id: "ORD-22112", name: "Saron Tadesse", status: "Completed", amount: 10400, date: "2026-04-18", region: "Sidama" },
-    { id: "ORD-22113", name: "Bereket Mulu", status: "Cancelled", amount: 2700, date: "2026-04-18", region: "Addis Ababa" },
-    { id: "ORD-22114", name: "Rahel Kebede", status: "Completed", amount: 5200, date: "2026-04-17", region: "Tigray" },
-    { id: "ORD-22115", name: "Yonas Fikru", status: "Completed", amount: 7600, date: "2026-04-17", region: "Oromia" },
-    { id: "ORD-22116", name: "Lulit Desta", status: "Pending", amount: 3200, date: "2026-04-16", region: "Amhara" },
-    { id: "ORD-22117", name: "Marta Gebru", status: "Completed", amount: 8800, date: "2026-04-16", region: "Sidama" },
-    { id: "ORD-22118", name: "Tigist Abera", status: "Completed", amount: 4600, date: "2026-04-15", region: "Addis Ababa" },
-  ],
-  revenue: [
-    { id: "REV-1001", name: "Addis Loom Studio", status: "Active", amount: 182500, date: "2026-04-20", region: "Addis Ababa" },
-    { id: "REV-1002", name: "Meklit Ceramics", status: "Active", amount: 148300, date: "2026-04-19", region: "Oromia" },
-    { id: "REV-1003", name: "Walia Woodcraft", status: "Active", amount: 121900, date: "2026-04-18", region: "Amhara" },
-    { id: "REV-1004", name: "Hawassa Leather", status: "Pending", amount: 93600, date: "2026-04-17", region: "Sidama" },
-    { id: "REV-1005", name: "Abeba Textiles", status: "Active", amount: 76400, date: "2026-04-16", region: "Tigray" },
-  ],
-  users: [
-    { id: "USR-4401", name: "Selamawit Tarekegn", status: "Active", amount: 12, date: "2026-04-20", region: "Addis Ababa" },
-    { id: "USR-4402", name: "Dawit Mamo", status: "Suspended", amount: 4, date: "2026-04-19", region: "Amhara" },
-    { id: "USR-4403", name: "Hanna Moges", status: "Active", amount: 18, date: "2026-04-19", region: "Oromia" },
-    { id: "USR-4404", name: "Lensa Daba", status: "Active", amount: 9, date: "2026-04-17", region: "Sidama" },
-    { id: "USR-4405", name: "Fitsum Admasu", status: "Pending", amount: 2, date: "2026-04-15", region: "Tigray" },
-  ],
-  artisans: [
-    { id: "ART-801", name: "Marta Woven Atelier", status: "Active", amount: 126000, date: "2026-04-20", region: "Addis Ababa" },
-    { id: "ART-802", name: "Nardos Pottery", status: "Pending", amount: 88200, date: "2026-04-18", region: "Oromia" },
-    { id: "ART-803", name: "Abenezer Craftworks", status: "Active", amount: 104500, date: "2026-04-17", region: "Amhara" },
-    { id: "ART-804", name: "Meskerem Threads", status: "Suspended", amount: 42100, date: "2026-04-15", region: "Sidama" },
-  ],
-  agents: [
-    { id: "AGT-91", name: "Hana T", status: "Active", amount: 34, date: "2026-04-20", region: "Addis Ababa" },
-    { id: "AGT-92", name: "Yared B", status: "Active", amount: 28, date: "2026-04-19", region: "Oromia" },
-    { id: "AGT-93", name: "Selam K", status: "Pending", amount: 17, date: "2026-04-18", region: "Amhara" },
-    { id: "AGT-94", name: "Mimi A", status: "Active", amount: 22, date: "2026-04-17", region: "Sidama" },
-  ],
-};
+function getApiBase() {
+  return (process.env.NEXT_PUBLIC_BASE_URL ?? "").replace(/\/$/, "") || "http://localhost:4000/api/v1";
+}
+
+function getReportDateRange(dateRange: DateRange, customFrom: string, customTo: string) {
+  const now = new Date();
+  const to = new Date(now);
+  let from = new Date(now);
+  if (dateRange === "7d") {
+    from.setDate(now.getDate() - 7);
+  } else if (dateRange === "30d") {
+    from.setDate(now.getDate() - 30);
+  } else if (customFrom && customTo) {
+    const a = new Date(customFrom);
+    const b = new Date(customTo);
+    if (!Number.isNaN(a.getTime()) && !Number.isNaN(b.getTime()) && a <= b) {
+      from = a;
+      to.setTime(b.getTime());
+      to.setHours(23, 59, 59, 999);
+    } else {
+      from.setDate(now.getDate() - 30);
+    }
+  } else {
+    from.setDate(now.getDate() - 30);
+  }
+  return { dateFrom: from.toISOString(), dateTo: to.toISOString() };
+}
 
 function formatAmount(type: ReportType, value: number) {
   if (type === "orders") return `ETB ${value.toLocaleString()}`;
@@ -102,24 +141,40 @@ function formatAmount(type: ReportType, value: number) {
   return `${value} tasks`;
 }
 
-function getRowRole(reportType: ReportType) {
-  if (reportType === "artisans" || reportType === "revenue") return "Artisan";
-  if (reportType === "agents") return "Agent";
-  return "Customer";
-}
-
 function SummaryCards({ rows, reportType, enabled }: { rows: ReportRow[]; reportType: ReportType; enabled: boolean }) {
   const total = rows.reduce((sum, row) => sum + row.amount, 0);
   const completed = rows.filter((row) => row.status === "Completed" || row.status === "Active").length;
   const average = rows.length ? total / rows.length : 0;
   const successRate = rows.length ? (completed / rows.length) * 100 : 0;
 
-  const cards = [
-    { label: "Total Revenue", value: `ETB ${total.toLocaleString()}` },
-    { label: `Total ${reportType === "orders" ? "Orders" : "Records"}`, value: rows.length.toLocaleString() },
-    { label: "Average Value", value: formatAmount(reportType, Math.round(average)) },
-    { label: "Success Rate", value: `${successRate.toFixed(1)}%` },
-  ];
+  const cards =
+    reportType === "orders"
+      ? [
+          { label: "Gross (ETB)", value: `ETB ${total.toLocaleString()}` },
+          { label: "Orders", value: rows.length.toLocaleString() },
+          { label: "Avg order (ETB)", value: formatAmount(reportType, Math.round(average)) },
+          { label: "Delivered / active share", value: `${successRate.toFixed(1)}%` },
+        ]
+      : reportType === "users"
+        ? [
+            { label: "Lifetime orders (sum)", value: total.toLocaleString() },
+            { label: "Accounts (latest)", value: rows.length.toLocaleString() },
+            { label: "Avg orders / user", value: rows.length ? (total / rows.length).toFixed(1) : "0" },
+            { label: "Active share", value: `${successRate.toFixed(1)}%` },
+          ]
+        : reportType === "agents"
+          ? [
+              { label: "Tasks in range", value: total.toLocaleString() },
+              { label: "Agents listed", value: rows.length.toLocaleString() },
+              { label: "Avg tasks / agent", value: rows.length ? (total / rows.length).toFixed(1) : "0" },
+              { label: "Active share", value: `${successRate.toFixed(1)}%` },
+            ]
+          : [
+              { label: "Revenue (ETB)", value: `ETB ${total.toLocaleString()}` },
+              { label: "Artisans", value: rows.length.toLocaleString() },
+              { label: "Avg (ETB)", value: formatAmount(reportType, Math.round(average)) },
+              { label: "Active / approved share", value: `${successRate.toFixed(1)}%` },
+            ];
 
   return (
     <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -303,7 +358,7 @@ function DataTable({
               <th className="px-4 py-3">Status</th>
               <th className="px-4 py-3">
                 <button onClick={() => onSort("amount")} className="inline-flex items-center gap-1 font-semibold">
-                  Amount (ETB)
+                  {reportType === "users" ? "Orders placed" : reportType === "agents" ? "Tasks" : "Amount (ETB)"}
                   {sortKey === "amount" ? <ChevronDown className={cn("h-3.5 w-3.5", sortDirection === "asc" && "rotate-180")} /> : null}
                 </button>
               </th>
@@ -351,7 +406,11 @@ function DataTable({
                       {row.status}
                     </span>
                   </td>
-                  <td className="px-4 py-3 font-semibold">ETB {row.amount.toLocaleString()}</td>
+                  <td className="px-4 py-3 font-semibold">
+                    {reportType === "users" || reportType === "agents"
+                      ? row.amount.toLocaleString()
+                      : `ETB ${row.amount.toLocaleString()}`}
+                  </td>
                   <td className="px-4 py-3">{row.region}</td>
                   <td className="px-4 py-3 text-stone-500">{row.date}</td>
                 </tr>
@@ -363,7 +422,15 @@ function DataTable({
   );
 }
 
-function ExportActions({ generated }: { generated: boolean }) {
+function ExportActions({
+  generated,
+  rows,
+  reportType,
+}: {
+  generated: boolean;
+  rows: ReportRow[];
+  reportType: ReportType;
+}) {
   const [mounted, setMounted] = useState(false);
   const [generatedOn, setGeneratedOn] = useState("");
 
@@ -371,6 +438,22 @@ function ExportActions({ generated }: { generated: boolean }) {
     setMounted(true);
     setGeneratedOn(new Date().toLocaleString());
   }, []);
+
+  const downloadCsv = () => {
+    const headers = ["id", "name", "status", "amount", "region", "date", "role"];
+    const lines = [headers.join(",")].concat(
+      rows.map((r) =>
+        [r.id, `"${r.name.replace(/"/g, '""')}"`, r.status, r.amount, `"${r.region}"`, r.date, r.role].join(","),
+      ),
+    );
+    const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `ethicraft-report-${reportType}-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <section className="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
@@ -381,7 +464,9 @@ function ExportActions({ generated }: { generated: boolean }) {
         </div>
         <div className="flex flex-wrap gap-2">
           <button
-            disabled={!generated}
+            type="button"
+            disabled={!generated || rows.length === 0}
+            onClick={downloadCsv}
             className="inline-flex items-center gap-2 rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm font-medium transition enabled:hover:-translate-y-0.5 enabled:hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-40"
           >
             <FileDown className="h-4 w-4" /> Export CSV
@@ -407,6 +492,8 @@ function ExportActions({ generated }: { generated: boolean }) {
 function App() {
   const [reportType, setReportType] = useState<ReportType>("orders");
   const [dateRange, setDateRange] = useState<DateRange>("30d");
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
   const [headerFilter, setHeaderFilter] = useState<HeaderFilter>("all");
   const [search, setSearch] = useState("");
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
@@ -414,19 +501,58 @@ function App() {
   const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
   const [includeInactive, setIncludeInactive] = useState(false);
   const [generated, setGenerated] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState("");
+  const [apiRows, setApiRows] = useState<ReportRow[]>([]);
   const [sortKey, setSortKey] = useState<SortKey>("date");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [currentPage, setCurrentPage] = useState(1);
 
   const pageSize = 6;
 
+  const loadReport = useCallback(async (type: ReportType) => {
+    setLoading(true);
+    setFetchError("");
+    try {
+      const base = getApiBase();
+      const token = localStorage.getItem("token") || localStorage.getItem("authToken");
+      const headers: Record<string, string> = {};
+      if (token) headers.Authorization = `Bearer ${token}`;
+      const { dateFrom, dateTo } = getReportDateRange(dateRange, customFrom, customTo);
+      const params = new URLSearchParams({
+        type,
+        dateFrom,
+        dateTo,
+        limit: "500",
+      });
+      const res = await fetch(`${base}/admin/dashboard/reports?${params.toString()}`, { headers });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(json?.message || "Failed to load report");
+      }
+      const rows = (json?.data?.rows || []) as ReportRow[];
+      setApiRows(Array.isArray(rows) ? rows : []);
+      setGenerated(true);
+    } catch (e) {
+      setFetchError(e instanceof Error ? e.message : "Failed to load report");
+      setApiRows([]);
+      setGenerated(false);
+    } finally {
+      setLoading(false);
+    }
+  }, [dateRange, customFrom, customTo]);
+
+  useEffect(() => {
+    void loadReport(reportType);
+  }, [reportType, loadReport]);
+
   const filteredRows = useMemo(() => {
-    const baseRows = reportDataset[reportType];
-    return baseRows.filter((row) => {
-      const matchSearch = !search || row.id.toLowerCase().includes(search.toLowerCase()) || row.name.toLowerCase().includes(search.toLowerCase());
-      const rowRole = getRowRole(reportType);
-      const matchRole = selectedRoles.length === 0 || selectedRoles.includes(rowRole);
+    return apiRows.filter((row) => {
+      const matchSearch =
+        !search ||
+        row.id.toLowerCase().includes(search.toLowerCase()) ||
+        row.name.toLowerCase().includes(search.toLowerCase());
+      const matchRole = selectedRoles.length === 0 || selectedRoles.includes(row.role);
       const matchStatus = selectedStatuses.length === 0 || selectedStatuses.includes(row.status);
       const matchRegion = selectedRegions.length === 0 || selectedRegions.includes(row.region);
       const matchHeaderFilter =
@@ -437,7 +563,7 @@ function App() {
       const matchInactive = includeInactive || row.status !== "Suspended";
       return matchSearch && matchRole && matchStatus && matchRegion && matchHeaderFilter && matchInactive;
     });
-  }, [reportType, search, selectedRoles, selectedStatuses, selectedRegions, includeInactive, headerFilter]);
+  }, [apiRows, search, selectedRoles, selectedStatuses, selectedRegions, includeInactive, headerFilter]);
 
   const sortedRows = useMemo(() => {
     return [...filteredRows].sort((a, b) => {
@@ -465,17 +591,19 @@ function App() {
   };
 
   const handleGenerateReport = () => {
-    setGenerated(true);
-    setLoading(true);
     setCurrentPage(1);
-    window.setTimeout(() => setLoading(false), 900);
+    void loadReport(reportType);
   };
 
-  const savedReports = [
-    { name: "Monthly Revenue Report", type: "revenue", updated: "2 hours ago" },
-    { name: "Top Artisan Performance", type: "artisans", updated: "Yesterday" },
-    { name: "Order Fulfillment Review", type: "orders", updated: "3 days ago" },
-  ];
+  const applyPreset = (preset: ReportPreset) => {
+    setCurrentPage(1);
+    setReportType(preset.reportType);
+    setDateRange(preset.dateRange);
+    if (preset.dateRange !== "custom") {
+      setCustomFrom("");
+      setCustomTo("");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#F6F6F4] text-[#1C1C1C]">
@@ -507,6 +635,24 @@ function App() {
                 <option value="custom">Custom range</option>
               </select>
 
+              {dateRange === "custom" ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <input
+                    type="date"
+                    value={customFrom}
+                    onChange={(e) => setCustomFrom(e.target.value)}
+                    className="rounded-xl border border-stone-200 bg-white px-2 py-2 text-sm outline-none focus:border-[#C6A75E]"
+                  />
+                  <span className="text-stone-400">–</span>
+                  <input
+                    type="date"
+                    value={customTo}
+                    onChange={(e) => setCustomTo(e.target.value)}
+                    className="rounded-xl border border-stone-200 bg-white px-2 py-2 text-sm outline-none focus:border-[#C6A75E]"
+                  />
+                </div>
+              ) : null}
+
               <div className="relative">
                 <Filter className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-500" />
                 <select
@@ -535,6 +681,10 @@ function App() {
           </header>
 
           <div className="space-y-5">
+            {fetchError ? (
+              <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">{fetchError}</div>
+            ) : null}
+
             <ReportFilters
               selectedRoles={selectedRoles}
               selectedStatuses={selectedStatuses}
@@ -554,7 +704,7 @@ function App() {
               rows={paginatedRows}
               reportType={reportType}
               loading={loading}
-              generated={generated}
+              generated={generated || loading}
               sortKey={sortKey}
               sortDirection={sortDirection}
               onSort={handleSort}
@@ -582,40 +732,102 @@ function App() {
               </div>
             </div>
 
-            <ExportActions generated={generated && !loading} />
+            <ExportActions generated={generated && !loading} rows={sortedRows} reportType={reportType} />
 
-            <section className="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
-              <div className="mb-3 flex items-center justify-between">
-                <h3 className="font-display text-lg font-bold">Saved Reports</h3>
-                <button className="text-xs font-semibold uppercase tracking-wider text-[#7A6024]">Manage templates</button>
+            <section className="relative overflow-hidden rounded-3xl border border-stone-200 bg-white p-6 shadow-sm transition-all hover:shadow-md">
+              <div className="absolute -right-12 -top-12 h-40 w-40 rounded-full bg-[#C6A75E]/5 blur-3xl" />
+              <div className="absolute -bottom-12 -left-12 h-40 w-40 rounded-full bg-[#C6A75E]/5 blur-3xl" />
+              
+              <div className="relative mb-6">
+                <div className="inline-flex items-center gap-2 rounded-full bg-[#C6A75E]/10 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[#7A6024]">
+                  Efficiency Tools
+                </div>
+                <h3 className="mt-2 font-display text-2xl font-bold text-[#1C1C1C]">Quick Presets</h3>
+                <p className="mt-1 max-w-2xl text-sm text-stone-500">
+                  Instantly configure report parameters with optimized defaults. These shortcuts help you access the most frequent analytical views in one click.
+                </p>
               </div>
-              <div className="grid gap-3 md:grid-cols-3">
-                {savedReports.map((template) => (
-                  <article key={template.name} className="rounded-xl border border-stone-200 p-3 transition hover:-translate-y-0.5 hover:shadow-sm">
-                    <p className="font-medium">{template.name}</p>
-                    <p className="mt-1 text-xs text-stone-500">Updated {template.updated}</p>
-                    <div className="mt-3 flex gap-2">
+
+              <div className="relative grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {REPORT_PRESETS.map((preset) => {
+                  const Icon = preset.icon || FileText;
+                  const colorMap = {
+                    orders: "hover:border-emerald-200 hover:shadow-emerald-500/5",
+                    revenue: "hover:border-amber-200 hover:shadow-amber-500/5",
+                    artisans: "hover:border-blue-200 hover:shadow-blue-500/5",
+                    agents: "hover:border-purple-200 hover:shadow-purple-500/5",
+                    users: "hover:border-rose-200 hover:shadow-rose-500/5",
+                  };
+                  const iconBgMap = {
+                    orders: "group-hover:bg-emerald-500",
+                    revenue: "group-hover:bg-amber-500",
+                    artisans: "group-hover:bg-blue-500",
+                    agents: "group-hover:bg-purple-500",
+                    users: "group-hover:bg-rose-500",
+                  };
+                  const textMap = {
+                    orders: "group-hover:text-emerald-600",
+                    revenue: "group-hover:text-amber-600",
+                    artisans: "group-hover:text-blue-600",
+                    agents: "group-hover:text-purple-600",
+                    users: "group-hover:text-rose-600",
+                  };
+
+                  return (
+                    <article
+                      key={preset.id}
+                      className={cn(
+                        "group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-stone-100 bg-stone-50/30 p-5 transition-all duration-300 hover:bg-white hover:shadow-xl",
+                        colorMap[preset.reportType]
+                      )}
+                    >
+                      <div>
+                        <div className="mb-4 flex items-center justify-between">
+                          <div className={cn(
+                            "flex h-10 w-10 items-center justify-center rounded-xl bg-white shadow-sm ring-1 ring-stone-200 transition-all duration-300 group-hover:scale-110 group-hover:text-white group-hover:ring-0",
+                            iconBgMap[preset.reportType]
+                          )}>
+                            <Icon className="h-5 w-5" />
+                          </div>
+                          <div className="flex flex-col items-end">
+                            <span className={cn(
+                              "text-[10px] font-bold uppercase tracking-tighter text-stone-400 transition-colors",
+                              textMap[preset.reportType]
+                            )}>
+                              {reportTypeOptions.find((o) => o.value === preset.reportType)?.label}
+                            </span>
+                            <span className="text-[10px] font-medium text-stone-400">
+                              {preset.dateRange === "7d" ? "7 days" : preset.dateRange === "30d" ? "30 days" : "Custom"}
+                            </span>
+                          </div>
+                        </div>
+                        
+                        <h4 className="font-display text-base font-bold text-stone-800 transition-colors group-hover:text-[#1C1C1C]">
+                          {preset.name}
+                        </h4>
+                        <p className="mt-1.5 text-xs leading-relaxed text-stone-500">
+                          {preset.description}
+                        </p>
+                      </div>
+
                       <button
-                        onClick={() => {
-                          setReportType(template.type as ReportType);
-                          setGenerated(false);
-                        }}
-                        className="inline-flex items-center gap-1 rounded-lg border border-stone-200 px-2 py-1 text-xs"
+                        type="button"
+                        onClick={() => applyPreset(preset)}
+                        className={cn(
+                          "mt-5 flex w-full items-center justify-center gap-2 rounded-xl border py-2.5 text-xs font-bold transition-all",
+                          preset.reportType === 'orders' ? "border-emerald-100 text-emerald-700 hover:bg-emerald-500 hover:text-white hover:border-emerald-500" :
+                          preset.reportType === 'revenue' ? "border-amber-100 text-amber-700 hover:bg-amber-500 hover:text-white hover:border-amber-500" :
+                          preset.reportType === 'artisans' ? "border-blue-100 text-blue-700 hover:bg-blue-500 hover:text-white hover:border-blue-500" :
+                          preset.reportType === 'agents' ? "border-purple-100 text-purple-700 hover:bg-purple-500 hover:text-white hover:border-purple-500" :
+                          "border-rose-100 text-rose-700 hover:bg-rose-500 hover:text-white hover:border-rose-500"
+                        )}
                       >
-                        <Eye className="h-3.5 w-3.5" /> Quick load
+                        <Eye className="h-3.5 w-3.5" />
+                        Generate Now
                       </button>
-                      <button
-                        onClick={() => {
-                          setReportType(template.type as ReportType);
-                          handleGenerateReport();
-                        }}
-                        className="inline-flex items-center gap-1 rounded-lg bg-[#C6A75E] px-2 py-1 text-xs font-semibold text-white"
-                      >
-                        <Download className="h-3.5 w-3.5" /> Re-run
-                      </button>
-                    </div>
-                  </article>
-                ))}
+                    </article>
+                  );
+                })}
               </div>
             </section>
           </div>

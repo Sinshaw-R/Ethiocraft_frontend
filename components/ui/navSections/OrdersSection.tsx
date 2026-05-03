@@ -57,6 +57,7 @@ export default function OrdersSection(props: any) {
   return (
     <>
       <GenericSection
+        {...props}
         title="Orders"
         description={props.sectionDescriptions?.Orders}
         placeholderRows={placeholderRows}

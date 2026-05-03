@@ -67,6 +67,7 @@ export default function SamplesSection(props: any) {
   return (
     <>
       <GenericSection
+        {...props}
         title="Samples"
         description={props.sectionDescriptions?.Samples}
         placeholderRows={placeholderRows}

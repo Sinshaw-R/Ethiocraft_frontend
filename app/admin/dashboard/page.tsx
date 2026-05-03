@@ -108,12 +108,7 @@ const kpiCards = [
 // KPI cards: sample metrics shown on the dashboard.
 // In production these should be backed by real analytics / reporting APIs.
 
-const initialApprovalItems: ApprovalItem[] = [
-  { id: 'A-201', type: 'Artisan', name: 'Selam Woven Studio', date: 'Today', priority: 'high' },
-  { id: 'P-894', type: 'Product', name: 'Hand-etched Coffee Pot Set', date: '2h ago', priority: 'medium' },
-  { id: 'V-102', type: 'Verification', name: 'Mulu Leather House', date: '5h ago', priority: 'high' },
-  { id: 'P-900', type: 'Product', name: 'Amhara Cotton Throw', date: 'Yesterday', priority: 'medium' },
-];
+const initialApprovalItems: ApprovalItem[] = [];
 // Sample pending approvals used to populate the 'Pending Approvals' panel.
 // Replace with a real approval queue fetched from the server; wire approve/reject actions.
 
@@ -255,6 +250,45 @@ export default function App() {
       }
     };
     fetchGlobalUsers();
+
+    const fetchPendingSamples = async () => {
+      try {
+        const base = (process.env.NEXT_PUBLIC_BASE_URL ?? '').replace(/\/$/, '') || 'http://localhost:4000/api/v1';
+        const token = localStorage.getItem('token') || localStorage.getItem('authToken');
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (token) headers.Authorization = `Bearer ${token}`;
+
+        const res = await fetch(`${base}/admin/samples/pending?limit=5`, { headers });
+        if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+        const json = await res.json();
+
+        const samples = json.data?.items || [];
+        const mapped: ApprovalItem[] = samples.map((s: any) => {
+          const createdAt = new Date(s.createdAt);
+          const now = new Date();
+          const diffInHours = Math.floor((now.getTime() - createdAt.getTime()) / (1000 * 60 * 60));
+          let dateStr = 'Just now';
+          if (diffInHours > 0 && diffInHours < 24) dateStr = `${diffInHours}h ago`;
+          else if (diffInHours >= 24) dateStr = `${Math.floor(diffInHours / 24)}d ago`;
+          else if (diffInHours === 0) {
+              const diffInMins = Math.floor((now.getTime() - createdAt.getTime()) / (1000 * 60));
+              if (diffInMins > 0) dateStr = `${diffInMins}m ago`;
+          }
+
+          return {
+            id: s.id,
+            type: 'Verification',
+            name: s.title,
+            date: dateStr,
+            priority: diffInHours > 48 ? 'high' : 'medium',
+          };
+        });
+        setApprovalItems(mapped);
+      } catch (err) {
+        console.error('Failed to fetch pending samples', err);
+      }
+    };
+    fetchPendingSamples();
   }, []);
 
   const rowHeight = 56;
@@ -304,10 +338,8 @@ export default function App() {
     }
   };
   const handleApprovalAction = (id: string, action: 'approve' | 'reject') => {
-    const item = approvalItems.find((entry) => entry.id === id);
-    if (!item) return;
-    setApprovalItems((current) => current.filter((entry) => entry.id !== id));
-    showFeedback(`${item.type} ${action === 'approve' ? 'approved' : 'rejected'}: ${item.name}`);
+    // Navigate to detail page instead of local state update for samples
+    router.push(`/admin/sample/${id}`);
   };
 
   const runQuickAction = (label: string) => {
@@ -351,22 +383,32 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#FAFAF9] text-[#1C1C1C]" style={{ fontFamily: 'Inter, sans-serif' }}>
+      {/* Premium background mesh gradient */}
+      <div className="fixed inset-0 pointer-events-none opacity-[0.4]" 
+           style={{ background: 'radial-gradient(circle at 50% 50%, #fdfbf7 0%, #FAFAF9 100%)' }} />
+
       <aside
-        className={`fixed inset-y-0 left-0 z-40 border-r border-[#e8e0d2] bg-[#fdfbf7] px-3 py-5 transition-all duration-300 ${collapsed ? 'lg:w-20' : 'lg:w-72'
-          } w-72 ${mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
+        className={`fixed inset-y-0 left-0 z-40 border-r border-[#e8e0d2]/60 bg-gradient-to-b from-[#fdfbf7] to-[#f5f0e6] px-4 py-6 transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] ${
+          collapsed ? 'lg:w-20' : 'lg:w-72'
+        } w-72 ${mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} shadow-2xl lg:shadow-none`}
       >
-        <div className="flex items-center justify-between px-2">
+        <div className="flex items-center justify-between px-2 mb-8">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center bg-[#3E2723] text-[#FAFAF9]">E</div>
+            <div className="flex h-10 w-10 items-center justify-center bg-[#3E2723] text-[#FAFAF9] rounded-xl shadow-lg shadow-[#3E2723]/20 font-black">
+              E
+            </div>
             {!collapsed && (
-              <p className="text-sm uppercase tracking-[0.14em]" style={{ fontFamily: 'Aeonik, Inter, sans-serif' }}>
-                Curated Admin
-              </p>
+              <div className="flex flex-col">
+                <p className="text-xs font-black uppercase tracking-[0.2em] text-[#3E2723]" style={{ fontFamily: 'Aeonik, Inter, sans-serif' }}>
+                  EthioCraft
+                </p>
+                <p className="text-[10px] uppercase tracking-[0.1em] text-[#C6A75E] font-bold">Admin Console</p>
+              </div>
             )}
           </div>
           <button
             onClick={() => setCollapsed((prev) => !prev)}
-            className="text-[#74685f] transition-colors hover:text-[#3E2723]"
+            className="group flex h-8 w-8 items-center justify-center rounded-full border border-[#e8e0d2] bg-white text-[#74685f] transition-all hover:bg-[#3E2723] hover:text-white"
             aria-label="Toggle sidebar"
           >
             {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
@@ -390,67 +432,85 @@ export default function App() {
         />
       )}
 
-      <div className={`transition-all duration-300 ${collapsed ? 'lg:ml-20' : 'lg:ml-72'}`}>
-        <header className="sticky top-0 z-30 border-b border-[#ece3d5] bg-[#FAFAF9]/90 backdrop-blur">
-          <div className="relative flex items-center gap-4 px-6 py-4 lg:px-8">
+      <div className={`transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] ${collapsed ? 'lg:ml-20' : 'lg:ml-72'}`}>
+        <header className="sticky top-0 z-30 border-b border-[#ece3d5]/40 bg-white/70 backdrop-blur-xl transition-all duration-300">
+          <div className="relative flex items-center gap-6 px-6 py-4 lg:px-10">
             <button
-              className="rounded-lg border border-[#e4dacb] p-2 text-[#6d645e] lg:hidden"
+              className="group rounded-xl border border-[#e4dacb] p-2.5 text-[#6d645e] transition-all hover:bg-[#3E2723] hover:text-white lg:hidden"
               aria-label="Open menu"
               onClick={() => setMobileSidebarOpen(true)}
             >
               <Menu className="h-4 w-4" />
             </button>
-            <div className="flex flex-1 items-center gap-3 border border-[#e4dacb] bg-white/70 px-3 py-2">
-              <Search className="h-4 w-4 text-[#9b8f83]" />
-              <input
-                placeholder="Search users, products, orders"
-                className="w-full bg-transparent text-sm outline-none placeholder:text-[#b0a497]"
-                value={searchQuery}
-                onFocus={() => {
+
+            <div className="flex flex-1 items-center gap-4 group">
+              <div className="flex flex-1 items-center gap-3 rounded-2xl border border-[#e4dacb]/60 bg-[#fdfbf7]/50 px-4 py-2.5 transition-all duration-300 focus-within:border-[#C6A75E] focus-within:bg-white focus-within:shadow-xl focus-within:shadow-[#C6A75E]/5">
+                <Search className="h-4 w-4 text-[#9b8f83] transition-colors group-focus-within:text-[#C6A75E]" />
+                <input
+                  placeholder="Search dashboard..."
+                  className="w-full bg-transparent text-sm outline-none placeholder:text-[#b0a497] font-medium"
+                  value={searchQuery}
+                  onFocus={() => {
+                    setNotificationsOpen(false);
+                    setQuickActionsOpen(false);
+                  }}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 md:gap-5">
+              <button
+                className="relative flex h-10 w-10 items-center justify-center rounded-2xl border border-[#e4dacb]/60 bg-white text-[#5f5750] transition-all hover:bg-[#f3ede2] hover:shadow-lg"
+                onClick={() => {
+                  setNotificationsOpen((prev) => !prev);
+                  setQuickActionsOpen(false);
+                  setProfileMenuOpen(false);
+                }}
+              >
+                <Bell className="h-4 w-4" />
+                {unreadNotifications > 0 && (
+                  <span className="absolute -right-1 -top-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#C6A75E] border-2 border-white px-1 text-[10px] font-black text-white shadow-sm">
+                    {unreadNotifications}
+                  </span>
+                )}
+              </button>
+
+              <button
+                className="hidden items-center gap-2 rounded-2xl bg-[#3E2723] px-5 py-2.5 text-xs font-black uppercase tracking-widest text-[#FAFAF9] transition-all hover:-translate-y-0.5 hover:shadow-xl hover:shadow-[#3E2723]/20 active:translate-y-0 md:inline-flex"
+                style={{ fontFamily: 'Aeonik, Inter, sans-serif' }}
+                onClick={() => {
+                  setQuickActionsOpen((prev) => !prev);
+                  setNotificationsOpen(false);
+                  setProfileMenuOpen(false);
+                }}
+              >
+                <X className={`h-3.5 w-3.5 transition-transform duration-300 ${quickActionsOpen ? 'rotate-0' : 'rotate-45'}`} />
+                Actions
+              </button>
+
+              <div className="h-8 w-px bg-[#ece3d5]/60 hidden md:block" />
+
+              <button
+                className="group flex items-center gap-3 rounded-2xl p-1 pr-3 transition-all hover:bg-[#fdfbf7]"
+                onClick={() => {
+                  setProfileMenuOpen((prev) => !prev);
                   setNotificationsOpen(false);
                   setQuickActionsOpen(false);
                 }}
-                onChange={(event) => setSearchQuery(event.target.value)}
-              />
+              >
+                <div className="relative">
+                  <div className="h-10 w-10 overflow-hidden rounded-2xl border-2 border-[#e8dece] bg-[#d6c6b3] transition-all group-hover:border-[#C6A75E] shadow-sm">
+                    <div className="h-full w-full bg-gradient-to-br from-[#d6c6b3] to-[#b0a497] flex items-center justify-center text-white font-bold">A</div>
+                  </div>
+                  <div className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full border-2 border-white bg-emerald-500 shadow-sm" />
+                </div>
+                <div className="hidden text-left md:block">
+                  <p className="text-xs font-black uppercase tracking-wider text-[#3E2723]">Admin</p>
+                  <p className="text-[10px] font-bold text-[#83786f]">System Ops</p>
+                </div>
+              </button>
             </div>
-            <button
-              className="relative rounded-xl border border-[#e4dacb] p-2 text-[#5f5750] transition hover:bg-[#f3ede2]"
-              onClick={() => {
-                setNotificationsOpen((prev) => !prev);
-                setQuickActionsOpen(false);
-                setProfileMenuOpen(false);
-              }}
-            >
-              <Bell className="h-4 w-4" />
-              <span className="absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-[#C6A75E] px-1 text-[10px] text-[#1C1C1C]">
-                {unreadNotifications}
-              </span>
-            </button>
-            <button
-              className="hidden rounded-xl border border-[#3E2723] bg-[#3E2723] px-3 py-2 text-sm text-[#FAFAF9] transition hover:opacity-90 md:inline-flex"
-              style={{ fontFamily: 'Aeonik, Inter, sans-serif' }}
-              onClick={() => {
-                setQuickActionsOpen((prev) => !prev);
-                setNotificationsOpen(false);
-                setProfileMenuOpen(false);
-              }}
-            >
-              + Quick Actions
-            </button>
-            <button
-              className="flex items-center gap-3"
-              onClick={() => {
-                setProfileMenuOpen((prev) => !prev);
-                setNotificationsOpen(false);
-                setQuickActionsOpen(false);
-              }}
-            >
-              <div className="h-9 w-9 rounded-full bg-[#d6c6b3]" />
-              <div className="hidden md:block">
-                <p className="text-sm font-medium">Admin</p>
-                <p className="text-xs text-[#83786f]">Marketplace Ops</p>
-              </div>
-            </button>
 
             {searchResults.length > 0 && (
               <div className="absolute left-6 right-6 top-[calc(100%-2px)] z-40 rounded-2xl border border-[#e8dece] bg-white p-2 shadow-[0_12px_30px_rgba(62,39,35,0.08)] lg:left-8 lg:right-[390px]">
@@ -578,7 +638,10 @@ export default function App() {
       </div>
 
       {feedbackMessage && (
-        <div className="fixed bottom-5 right-5 z-50 rounded-xl border border-[#d8ccb9] bg-white px-4 py-3 text-sm shadow-[0_10px_24px_rgba(62,39,35,0.12)]">
+        <div className="fixed bottom-8 right-8 z-50 flex items-center gap-3 rounded-2xl border border-[#3E2723]/10 bg-white px-6 py-4 text-sm font-bold text-[#3E2723] shadow-[0_20px_50px_rgba(62,39,35,0.15)] animate-in fade-in slide-in-from-bottom-5 duration-300">
+          <div className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+            <Check className="h-3.5 w-3.5" />
+          </div>
           {feedbackMessage}
         </div>
       )}

@@ -2,6 +2,12 @@ import { Button } from '@/components/ui/button';
 import React from 'react';
 import { Inbox } from 'lucide-react';
 
+type Metric = {
+  label: string;
+  value: string | number;
+  description: string;
+};
+
 type Props = {
   title: string;
   description?: string;
@@ -9,7 +15,10 @@ type Props = {
   loading?: boolean;
   showFeedback?: (m: string) => void;
   setActiveNav?: (s: string) => void;
-  onViewDetails?: (row: any) => void; // New prop for view details action
+  onViewDetails?: (row: any) => void;
+  metrics?: Metric[];
+  isPlaceholder?: boolean;
+  onCreateNew?: () => void;
 };
 
 export default function GenericSection({
@@ -20,7 +29,18 @@ export default function GenericSection({
   showFeedback,
   setActiveNav,
   onViewDetails,
+  metrics,
+  isPlaceholder = true,
+  onCreateNew,
 }: Props) {
+  const defaultMetrics: Metric[] = [
+    { label: 'Overview', value: 24, description: `Temporary placeholder metric for ${title}` },
+    { label: 'Work Queue', value: 48, description: `Temporary placeholder metric for ${title}` },
+    { label: 'Performance', value: 72, description: `Temporary placeholder metric for ${title}` },
+  ];
+
+  const displayMetrics = metrics || defaultMetrics;
+
   return (
     <main className="space-y-6 px-6 py-8 lg:px-8">
       <section className="rounded-3xl border border-[#e8dece] bg-white p-6 shadow-[0_8px_24px_rgba(62,39,35,0.05)]">
@@ -31,7 +51,7 @@ export default function GenericSection({
         <div className="mt-5 flex flex-wrap gap-3" style={{ fontFamily: 'Aeonik, Inter, sans-serif' }}>
           <button
             className="rounded-xl bg-[#3E2723] px-4 py-2 text-sm text-[#FAFAF9] transition hover:opacity-90"
-            onClick={() => showFeedback?.(`Create new ${title.slice(0, -1).toLowerCase()} placeholder`)}
+            onClick={() => onCreateNew ? onCreateNew() : showFeedback?.(`Create new ${title.slice(0, -1).toLowerCase()} placeholder`)}
           >
             New {title.slice(0, -1)}
           </button>
@@ -51,13 +71,13 @@ export default function GenericSection({
       </section>
 
       <section className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        {['Overview', 'Work Queue', 'Performance'].map((item, index) => (
-          <article key={item} className="rounded-3xl border border-[#e8dece] bg-white p-5 shadow-[0_6px_20px_rgba(62,39,35,0.04)]">
+        {displayMetrics.map((item) => (
+          <article key={item.label} className="rounded-3xl border border-[#e8dece] bg-white p-5 shadow-[0_6px_20px_rgba(62,39,35,0.04)]">
             <p className="text-xs uppercase tracking-[0.08em] text-[#82766b]" style={{ fontFamily: 'Aeonik, Inter, sans-serif' }}>
-              {item}
+              {item.label}
             </p>
-            <p className="mt-2 text-3xl font-semibold">{(index + 1) * 24}</p>
-            <p className="mt-2 text-xs text-[#6f655d]">Temporary placeholder metric for {title}</p>
+            <p className="mt-2 text-3xl font-semibold">{item.value}</p>
+            <p className="mt-2 text-xs text-[#6f655d]">{item.description}</p>
           </article>
         ))}
       </section>
@@ -67,7 +87,11 @@ export default function GenericSection({
           <h2 className="text-xl uppercase tracking-[0.04em]" style={{ fontFamily: '"Druk Wide", "Arial Black", sans-serif' }}>
             {title} Queue
           </h2>
-          <span className="rounded-full bg-[#f4ead6] px-2 py-1 text-xs text-[#5f4f33]">Placeholder Data</span>
+          {isPlaceholder ? (
+            <span className="rounded-full bg-[#f4ead6] px-2 py-1 text-xs text-[#5f4f33]">Placeholder Data</span>
+          ) : (
+            <span className="rounded-full bg-emerald-50 px-2 py-1 text-xs text-emerald-700 font-medium">Live Feed</span>
+          )}
         </div>
 
         <div className="overflow-x-auto rounded-2xl border border-[#ece2d3]">

@@ -68,7 +68,22 @@ function ProductPageContent() {
     const loadProducts = async () => {
       try {
         setIsLoadingProducts(true);
-        const response = await fetchProducts({ limit: 100 });
+        const apiSort =
+          sortBy === 'price-low'
+            ? 'price_asc'
+            : sortBy === 'price-high'
+              ? 'price_desc'
+              : undefined;
+        const response = await fetchProducts({
+          limit: 100,
+          search: keyword ? keyword : undefined,
+          category: activeCategory !== 'All' ? activeCategory : undefined,
+          minPrice: priceRange[0] > 0 ? priceRange[0] : undefined,
+          maxPrice: priceRange[1] < 500 ? priceRange[1] : undefined,
+          sortBy: apiSort,
+          regions: selectedRegions.length ? selectedRegions : undefined,
+          materials: selectedMaterials.length ? selectedMaterials : undefined,
+        });
         const items = response.items;
         const mappedProducts: Product[] = items.map((item: ApiProductSummary) => ({
           id: item.id,
@@ -92,8 +107,16 @@ function ProductPageContent() {
       }
     };
 
-    loadProducts();
-  }, []);
+    void loadProducts();
+  }, [
+    activeCategory,
+    keyword,
+    priceRange[0],
+    priceRange[1],
+    sortBy,
+    selectedRegions.join('\0'),
+    selectedMaterials.join('\0'),
+  ]);
 
   // Initialize filters from URL params
   useEffect(() => {
@@ -101,56 +124,30 @@ function ProductPageContent() {
     if (category && categories.includes(category as any)) {
       setActiveCategory(category as any);
     }
-    const region = searchParams.get('region');
-    if (region && regionsList.includes(region)) {
-      setSelectedRegions([region]);
-    }
-    const material = searchParams.get('material');
-    if (material && materialsList.includes(material)) {
-      setSelectedMaterials([material]);
-    }
+
+    const fromRegions = searchParams.getAll('region').map((r) => r.trim()).filter(Boolean);
+    if (fromRegions.length) setSelectedRegions(fromRegions);
+
+    const fromMaterials = searchParams.getAll('material').map((m) => m.trim()).filter(Boolean);
+    if (fromMaterials.length) setSelectedMaterials(fromMaterials);
+
     const minPrice = searchParams.get('minPrice');
     const maxPrice = searchParams.get('maxPrice');
     if (minPrice && maxPrice) {
-      setPriceRange([parseInt(minPrice), parseInt(maxPrice)]);
+      setPriceRange([parseInt(minPrice, 10), parseInt(maxPrice, 10)]);
     }
   }, [searchParams]);
 
-  // FILTER LOGIC - Shows all products by default, filters only when user applies them
   const filteredProducts = useMemo(() => {
-    // 1. Apply Filters
     let base = products
-      .filter((product) => activeCategory === 'All' || product.category === activeCategory)
       .filter((product) => (showNewOnly ? product.badge === 'New' : true))
-      .filter((product) => (showHandmadeOnly ? product.badge === 'Handmade' : true))
-      .filter((product) => product.price >= priceRange[0] && product.price <= priceRange[1])
-      .filter((product) => selectedRegions.length === 0 || (product.region && selectedRegions.includes(product.region)))
-      .filter(
-        (product) =>
-          selectedMaterials.length === 0 ||
-          (product.material && selectedMaterials.includes(product.material)),
-      )
-      .filter((product) => {
-        if (!keyword) return true;
-        const searchable = `${product.name} ${product.category} ${product.region ?? ''} ${product.material ?? ''}`.toLowerCase();
-        return searchable.includes(keyword);
-      });
+      .filter((product) => (showHandmadeOnly ? product.badge === 'Handmade' : true));
 
-    // 2. Apply Sorting
-    if (sortBy === 'price-low') return [...base].sort((a, b) => a.price - b.price);
-    if (sortBy === 'price-high') return [...base].sort((a, b) => b.price - a.price);
     if (sortBy === 'rating-high') return [...base].sort((a, b) => b.rating - a.rating);
     if (sortBy === 'rating-low') return [...base].sort((a, b) => a.rating - b.rating);
-    if (sortBy === 'newest') {
-      return [...base].sort((a, b) => {
-        if (a.badge === 'New' && b.badge !== 'New') return -1;
-        if (a.badge !== 'New' && b.badge === 'New') return 1;
-        return 0;
-      });
-    }
 
-    return base; // 'curated' default
-  }, [activeCategory, showHandmadeOnly, showNewOnly, sortBy, priceRange, selectedRegions, selectedMaterials, keyword, products]);
+    return base;
+  }, [products, showHandmadeOnly, showNewOnly, sortBy]);
 
   // Intersection Observer for staggered animations
   useEffect(() => {

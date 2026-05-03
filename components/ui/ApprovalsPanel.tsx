@@ -38,11 +38,11 @@ export default function ApprovalsPanel({ approvalItems, handleApprovalAction }: 
               <p className="text-xs text-[#7e7268]">{item.date}</p>
             </div>
             <div className="mt-3 flex gap-2">
-              <button className="inline-flex items-center gap-1 rounded-lg bg-[#3E2723] px-3 py-1.5 text-xs text-[#FAFAF9] transition hover:opacity-90" onClick={() => handleApprovalAction(item.id, 'approve')}>
-                <Check className="h-3 w-3" /> Approve
-              </button>
-              <button className="inline-flex items-center gap-1 rounded-lg border border-[#d4c8b6] px-3 py-1.5 text-xs text-[#6c6056] transition hover:bg-[#f8f3ea]" onClick={() => handleApprovalAction(item.id, 'reject')}>
-                <X className="h-3 w-3" /> Reject
+              <button 
+                className="inline-flex items-center gap-1.5 rounded-lg bg-[#3E2723] px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-[#FAFAF9] transition hover:opacity-90 shadow-md shadow-[#3E2723]/10" 
+                onClick={() => handleApprovalAction(item.id, 'approve')}
+              >
+                View Details
               </button>
             </div>
           </div>

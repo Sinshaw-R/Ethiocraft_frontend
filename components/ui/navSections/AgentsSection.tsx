@@ -1,5 +1,5 @@
 "use client"
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import GenericSection from './GenericSection';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerClose, DrawerFooter } from '@/components/ui/drawer';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,32 @@ export default function AgentsSection(props: any) {
   const { users = [], usersLoading = false } = props;
   const [selectedAgent, setSelectedAgent] = useState<any | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [metrics, setMetrics] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchMetrics = async () => {
+      try {
+        const base = (process.env.NEXT_PUBLIC_BASE_URL ?? '').replace(/\/$/, '') || 'http://localhost:4000/api/v1';
+        const token = localStorage.getItem('token') || localStorage.getItem('authToken');
+        const res = await fetch(`${base}/admin/agents/metrics`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!res.ok) throw new Error('Failed to fetch metrics');
+        const json = await res.json();
+        const data = json.data;
+
+        setMetrics([
+          { label: 'Total Agents', value: data.totalAgents, description: 'Registered verification agents' },
+          { label: 'Active vs Inactive', value: `${data.activeAgents} / ${data.inactiveAgents}`, description: 'Account status overview' },
+          { label: 'Avg Completion Rate', value: `${data.avgCompletionRate}%`, description: 'Successfully verified vs assigned' },
+          { label: 'Avg Task Time', value: `${data.avgTaskTimeHours}h`, description: 'Mean time to review a sample' },
+        ]);
+      } catch (err) {
+        console.error('Error fetching agent metrics:', err);
+      }
+    };
+    fetchMetrics();
+  }, []);
 
   // Filter for Agents
   const agents = users.filter((u: any) => u.role === 'VERIFICATION_AGENT');
@@ -48,6 +74,10 @@ export default function AgentsSection(props: any) {
     }
   };
 
+  const handleCreateNew = () => {
+    router.push('/admin/agents/new');
+  };
+
   return (
     <>
       <GenericSection
@@ -59,6 +89,9 @@ export default function AgentsSection(props: any) {
         showFeedback={props.showFeedback}
         setActiveNav={props.setActiveNav}
         onViewDetails={handleViewDetails}
+        metrics={metrics.length > 0 ? metrics : undefined}
+        isPlaceholder={false}
+        onCreateNew={handleCreateNew}
       />
 
       <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>

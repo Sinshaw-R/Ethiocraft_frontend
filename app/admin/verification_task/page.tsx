@@ -422,7 +422,13 @@ export default function VerificationControlCenter() {
               <div>
                 <h3 className="text-xs font-bold text-[#A39B8F] uppercase tracking-wider mb-3">Product Media</h3>
                 <div className="aspect-[4/3] rounded-2xl overflow-hidden border border-[#EAE5D9] bg-white relative">
-                  <img src={selectedTask.imageUrl} alt={selectedTask.productName} className="w-full h-full object-cover" />
+                  {selectedTask.imageUrl ? (
+                    <img src={selectedTask.imageUrl} alt={selectedTask.productName} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-400">
+                      No Image
+                    </div>
+                  )}
                 </div>
               </div>
 

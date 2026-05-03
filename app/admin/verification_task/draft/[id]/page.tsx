@@ -57,7 +57,7 @@ interface ProductDraft {
 export default function ProductDraftReviewPage() {
   const { id } = useParams();
   const router = useRouter();
-  
+
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
@@ -65,7 +65,7 @@ export default function ProductDraftReviewPage() {
   const [toast, setToast] = useState('');
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
-  
+
   const [draft, setDraft] = useState<ProductDraft | null>(null);
   const [formData, setFormData] = useState({
     title: '',
@@ -108,7 +108,7 @@ export default function ProductDraftReviewPage() {
       if (!res.ok) throw new Error(`Error: ${res.status}`);
       const json = await res.json();
       const data = json.data;
-      
+
       setDraft(data);
       setFormData({
         title: data.title || '',
@@ -130,7 +130,7 @@ export default function ProductDraftReviewPage() {
           artisanTechnique: data.culturalMetadata?.artisanTechnique || ''
         }
       });
-      
+
       setMaterialsInput((data.materials || []).join(', '));
       setTagsInput((data.tags || []).join(', '));
     } catch (err: any) {
@@ -150,7 +150,7 @@ export default function ProductDraftReviewPage() {
     try {
       const base = (process.env.NEXT_PUBLIC_BASE_URL ?? '').replace(/\/$/, '') || 'http://localhost:4000/api/v1';
       const token = localStorage.getItem('token');
-      
+
       const payload = {
         ...formData,
         materials: materialsInput.split(',').map(s => s.trim()).filter(Boolean),
@@ -170,7 +170,7 @@ export default function ProductDraftReviewPage() {
         const errorData = await res.json().catch(() => ({}));
         throw new Error(errorData.message || 'Failed to update draft');
       }
-      
+
       if (!silent) showToast('Draft saved successfully');
       return true;
     } catch (err: any) {
@@ -187,7 +187,7 @@ export default function ProductDraftReviewPage() {
     try {
       const base = (process.env.NEXT_PUBLIC_BASE_URL ?? '').replace(/\/$/, '') || 'http://localhost:4000/api/v1';
       const token = localStorage.getItem('token');
-      
+
       const res = await fetch(`${base}/verifications/products/drafts/${id}`, {
         method: 'PATCH',
         headers: {
@@ -201,7 +201,7 @@ export default function ProductDraftReviewPage() {
         const errorData = await res.json().catch(() => ({}));
         throw new Error(errorData.message || 'Failed to update status');
       }
-      
+
       showToast(`Draft moved to ${status.replace(/_/g, ' ')}`);
       fetchDraft();
     } catch (err: any) {
@@ -217,7 +217,7 @@ export default function ProductDraftReviewPage() {
     try {
       const base = (process.env.NEXT_PUBLIC_BASE_URL ?? '').replace(/\/$/, '') || 'http://localhost:4000/api/v1';
       const token = localStorage.getItem('token');
-      
+
       const res = await fetch(`${base}/verifications/products/drafts/${id}/review`, {
         method: 'PATCH',
         headers: {
@@ -231,14 +231,14 @@ export default function ProductDraftReviewPage() {
         const errorData = await res.json().catch(() => ({}));
         throw new Error(errorData.message || 'Failed to submit review');
       }
-      
+
       showToast(decision === 'APPROVE' ? 'Product Published!' : 'Draft Rejected');
       if (decision === 'APPROVE') {
-          router.push('/admin/verification_task');
+        router.push('/admin/verification_task');
       } else {
-          setShowRejectModal(false);
-          setRejectReason('');
-          fetchDraft();
+        setShowRejectModal(false);
+        setRejectReason('');
+        fetchDraft();
       }
     } catch (err: any) {
       showToast(err.message);
@@ -277,7 +277,7 @@ export default function ProductDraftReviewPage() {
       <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-[#EAE5D9] px-6 py-4 shadow-sm">
         <div className="max-w-[1600px] mx-auto flex items-center justify-between">
           <div className="flex items-center gap-6">
-            <button 
+            <button
               onClick={() => router.back()}
               className="p-2.5 hover:bg-[#FBFaf8] rounded-xl transition-colors border border-[#EAE5D9]"
             >
@@ -291,7 +291,7 @@ export default function ProductDraftReviewPage() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <button 
+            <button
               onClick={() => handleSave()}
               disabled={isSaving}
               className="px-6 py-3 bg-white border border-[#EAE5D9] text-[#3E2723] rounded-xl text-xs font-bold uppercase tracking-[0.2em] hover:bg-[#FBFaf8] transition-all disabled:opacity-50 flex items-center gap-2"
@@ -299,9 +299,9 @@ export default function ProductDraftReviewPage() {
               {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
               Save Progress
             </button>
-            
+
             {draft.status === 'ADMIN_CREATED' && (
-              <button 
+              <button
                 onClick={() => updateStatus('AGENT_IN_PROGRESS')}
                 disabled={isUpdatingStatus}
                 className="px-8 py-3 bg-[#C6A75E] text-white rounded-xl text-xs font-bold uppercase tracking-[0.2em] hover:bg-[#B5964D] transition-all shadow-lg shadow-[#C6A75E]/20 flex items-center gap-2"
@@ -312,7 +312,7 @@ export default function ProductDraftReviewPage() {
             )}
 
             {draft.status === 'AGENT_IN_PROGRESS' && (
-              <button 
+              <button
                 onClick={() => updateStatus('AGENT_VERIFIED')}
                 disabled={isUpdatingStatus}
                 className="px-8 py-3 bg-emerald-600 text-white rounded-xl text-xs font-bold uppercase tracking-[0.2em] hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-600/20 flex items-center gap-2"
@@ -324,14 +324,14 @@ export default function ProductDraftReviewPage() {
 
             {(draft.status === 'AGENT_VERIFIED' || draft.status === 'ADMIN_REVIEW') && (
               <div className="flex gap-2">
-                <button 
+                <button
                   onClick={() => setShowRejectModal(true)}
                   disabled={isUpdatingStatus}
                   className="px-6 py-3 bg-rose-50 text-rose-600 border border-rose-100 rounded-xl text-xs font-bold uppercase tracking-[0.2em] hover:bg-rose-100 transition-all flex items-center gap-2"
                 >
                   <Ban className="w-4 h-4" /> Reject
                 </button>
-                <button 
+                <button
                   onClick={() => handleReviewDecision('APPROVE')}
                   disabled={isUpdatingStatus}
                   className="px-8 py-3 bg-[#3E2723] text-white rounded-xl text-xs font-bold uppercase tracking-[0.2em] hover:bg-[#2A1A17] transition-all shadow-lg shadow-[#3E2723]/20 flex items-center gap-2"
@@ -347,7 +347,7 @@ export default function ProductDraftReviewPage() {
 
       <main className="max-w-[1600px] mx-auto px-6 py-10">
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
-          
+
           {/* Form Content */}
           <div className="xl:col-span-8 space-y-8">
             {/* Identity */}
@@ -359,48 +359,48 @@ export default function ProductDraftReviewPage() {
               <div className="space-y-6">
                 <div className="space-y-2">
                   <label className="text-[10px] font-bold text-[#A39B8F] uppercase tracking-widest ml-1">Draft Title</label>
-                  <input 
+                  <input
                     type="text"
                     value={formData.title}
-                    onChange={(e) => setFormData({...formData, title: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                     className="w-full bg-[#FBFaf8] border border-[#F0EBE0] rounded-2xl px-5 py-4 text-lg font-bold text-[#2D2620] outline-none focus:border-[#C6A75E] focus:bg-white transition-all"
                   />
                 </div>
                 <div className="space-y-2">
                   <label className="text-[10px] font-bold text-[#A39B8F] uppercase tracking-widest ml-1">Market Description</label>
-                  <textarea 
+                  <textarea
                     rows={6}
                     value={formData.description}
-                    onChange={(e) => setFormData({...formData, description: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     className="w-full bg-[#FBFaf8] border border-[#F0EBE0] rounded-2xl px-5 py-4 text-sm font-medium text-[#5C5449] leading-relaxed outline-none focus:border-[#C6A75E] focus:bg-white transition-all resize-none"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-bold text-[#A39B8F] uppercase tracking-widest ml-1">Category</label>
-                      <select 
-                        value={formData.category}
-                        onChange={(e) => setFormData({...formData, category: e.target.value})}
-                        className="w-full bg-[#FBFaf8] border border-[#F0EBE0] rounded-2xl px-5 py-4 text-sm font-bold text-[#2D2620] outline-none focus:border-[#C6A75E] focus:bg-white transition-all"
-                      >
-                        <option value="">Select Category</option>
-                        <option value="POTTERY">Pottery & Ceramics</option>
-                        <option value="WEAVING">Weaving & Textiles</option>
-                        <option value="LEATHER">Leatherwork</option>
-                        <option value="JEWELRY">Traditional Jewelry</option>
-                        <option value="WOODWORK">Woodwork & Carving</option>
-                        <option value="ART">Fine Art & Icons</option>
-                      </select>
-                    </div>
-                    <div className="space-y-2">
-                        <label className="text-[10px] font-bold text-[#A39B8F] uppercase tracking-widest ml-1">Technique</label>
-                        <input 
-                            type="text"
-                            value={formData.culturalMetadata.artisanTechnique}
-                            onChange={(e) => setFormData({...formData, culturalMetadata: {...formData.culturalMetadata, artisanTechnique: e.target.value}})}
-                            className="w-full bg-[#FBFaf8] border border-[#F0EBE0] rounded-2xl px-5 py-4 text-sm font-bold text-[#2D2620] outline-none focus:border-[#C6A75E] focus:bg-white transition-all"
-                        />
-                    </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold text-[#A39B8F] uppercase tracking-widest ml-1">Category</label>
+                    <select
+                      value={formData.category}
+                      onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                      className="w-full bg-[#FBFaf8] border border-[#F0EBE0] rounded-2xl px-5 py-4 text-sm font-bold text-[#2D2620] outline-none focus:border-[#C6A75E] focus:bg-white transition-all"
+                    >
+                      <option value="">Select Category</option>
+                      <option value="POTTERY">Pottery & Ceramics</option>
+                      <option value="WEAVING">Weaving & Textiles</option>
+                      <option value="LEATHER">Leatherwork</option>
+                      <option value="JEWELRY">Traditional Jewelry</option>
+                      <option value="WOODWORK">Woodwork & Carving</option>
+                      <option value="ART">Fine Art & Icons</option>
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold text-[#A39B8F] uppercase tracking-widest ml-1">Technique</label>
+                    <input
+                      type="text"
+                      value={formData.culturalMetadata.artisanTechnique}
+                      onChange={(e) => setFormData({ ...formData, culturalMetadata: { ...formData.culturalMetadata, artisanTechnique: e.target.value } })}
+                      className="w-full bg-[#FBFaf8] border border-[#F0EBE0] rounded-2xl px-5 py-4 text-sm font-bold text-[#2D2620] outline-none focus:border-[#C6A75E] focus:bg-white transition-all"
+                    />
+                  </div>
                 </div>
               </div>
             </article>
@@ -414,29 +414,29 @@ export default function ProductDraftReviewPage() {
               <div className="grid grid-cols-2 gap-8">
                 <div className="space-y-2">
                   <label className="text-[10px] font-bold text-[#A39B8F] uppercase tracking-widest ml-1">Region of Origin</label>
-                  <input 
+                  <input
                     type="text"
                     value={formData.culturalMetadata.region}
-                    onChange={(e) => setFormData({...formData, culturalMetadata: {...formData.culturalMetadata, region: e.target.value}})}
+                    onChange={(e) => setFormData({ ...formData, culturalMetadata: { ...formData.culturalMetadata, region: e.target.value } })}
                     className="w-full bg-[#FBFaf8] border border-[#F0EBE0] rounded-2xl px-5 py-4 text-sm font-bold text-[#2D2620] outline-none focus:border-[#C6A75E] focus:bg-white transition-all"
                   />
                 </div>
                 <div className="space-y-2">
                   <label className="text-[10px] font-bold text-[#A39B8F] uppercase tracking-widest ml-1">Historical Era</label>
-                  <input 
+                  <input
                     type="text"
                     value={formData.culturalMetadata.era}
-                    onChange={(e) => setFormData({...formData, culturalMetadata: {...formData.culturalMetadata, era: e.target.value}})}
+                    onChange={(e) => setFormData({ ...formData, culturalMetadata: { ...formData.culturalMetadata, era: e.target.value } })}
                     className="w-full bg-[#FBFaf8] border border-[#F0EBE0] rounded-2xl px-5 py-4 text-sm font-bold text-[#2D2620] outline-none focus:border-[#C6A75E] focus:bg-white transition-all"
                   />
                 </div>
               </div>
               <div className="mt-8 space-y-2">
                 <label className="text-[10px] font-bold text-[#A39B8F] uppercase tracking-widest ml-1">The Story Behind</label>
-                <textarea 
+                <textarea
                   rows={4}
                   value={formData.culturalMetadata.story}
-                  onChange={(e) => setFormData({...formData, culturalMetadata: {...formData.culturalMetadata, story: e.target.value}})}
+                  onChange={(e) => setFormData({ ...formData, culturalMetadata: { ...formData.culturalMetadata, story: e.target.value } })}
                   className="w-full bg-[#FBFaf8] border border-[#F0EBE0] rounded-2xl px-5 py-4 text-sm font-medium text-[#5C5449] leading-relaxed outline-none focus:border-[#C6A75E] focus:bg-white transition-all resize-none"
                 />
               </div>
@@ -477,19 +477,18 @@ export default function ProductDraftReviewPage() {
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-[#766A5D] uppercase tracking-wider">Current State</span>
                   <div className="flex items-center gap-2">
-                    <div className={`w-2 h-2 rounded-full animate-pulse ${
-                      draft.status === 'REJECTED' ? 'bg-rose-500' :
+                    <div className={`w-2 h-2 rounded-full animate-pulse ${draft.status === 'REJECTED' ? 'bg-rose-500' :
                       draft.status === 'PUBLISHED' ? 'bg-emerald-500' :
-                      'bg-amber-500'
-                    }`} />
+                        'bg-amber-500'
+                      }`} />
                     <span className="text-xs font-black text-[#3E2723] uppercase">{draft.status.replace(/_/g, ' ')}</span>
                   </div>
                 </div>
                 {draft.submissionNotes && (
-                    <div className="pt-4 border-t border-[#F0EBE0]">
-                        <p className="text-[10px] font-bold text-[#A39B8F] uppercase tracking-widest mb-1">Artisan Submission Notes</p>
-                        <p className="text-xs text-[#5C5449] italic">"{draft.submissionNotes}"</p>
-                    </div>
+                  <div className="pt-4 border-t border-[#F0EBE0]">
+                    <p className="text-[10px] font-bold text-[#A39B8F] uppercase tracking-widest mb-1">Artisan Submission Notes</p>
+                    <p className="text-xs text-[#5C5449] italic">"{draft.submissionNotes}"</p>
+                  </div>
                 )}
               </div>
             </article>
@@ -517,19 +516,19 @@ export default function ProductDraftReviewPage() {
               <div className="space-y-6">
                 <div className="space-y-2">
                   <label className="text-[10px] font-bold text-[#A39B8F] uppercase tracking-widest ml-1">Market Price (ETB)</label>
-                  <input 
+                  <input
                     type="number"
                     value={formData.price}
-                    onChange={(e) => setFormData({...formData, price: Number(e.target.value) || 0})}
+                    onChange={(e) => setFormData({ ...formData, price: Number(e.target.value) || 0 })}
                     className="w-full bg-[#FBFaf8] border border-[#F0EBE0] rounded-2xl px-5 py-4 text-xl font-black text-[#3E2723] outline-none"
                   />
                 </div>
                 <div className="space-y-2">
                   <label className="text-[10px] font-bold text-[#A39B8F] uppercase tracking-widest ml-1">Stock Readiness</label>
-                  <input 
+                  <input
                     type="number"
                     value={formData.stock}
-                    onChange={(e) => setFormData({...formData, stock: Number(e.target.value) || 0})}
+                    onChange={(e) => setFormData({ ...formData, stock: Number(e.target.value) || 0 })}
                     className="w-full bg-[#FBFaf8] border border-[#F0EBE0] rounded-2xl px-5 py-4 text-xl font-black text-[#2D2620] outline-none"
                   />
                 </div>
@@ -541,13 +540,13 @@ export default function ProductDraftReviewPage() {
               <h2 className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#A39B8F] mb-6">Recent Activity</h2>
               <div className="space-y-4">
                 <div className="flex gap-3">
-                    <div className="w-8 h-8 rounded-full bg-[#F6F4F0] flex items-center justify-center flex-shrink-0">
-                        <History className="w-4 h-4 text-[#766A5D]" />
-                    </div>
-                    <div>
-                        <p className="text-[11px] font-bold text-[#2D2620]">Draft Created</p>
-                        <p className="text-[9px] text-[#A39B8F]">Verified by System Automations</p>
-                    </div>
+                  <div className="w-8 h-8 rounded-full bg-[#F6F4F0] flex items-center justify-center flex-shrink-0">
+                    <History className="w-4 h-4 text-[#766A5D]" />
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-bold text-[#2D2620]">Draft Created</p>
+                    <p className="text-[9px] text-[#A39B8F]">Verified by System Automations</p>
+                  </div>
                 </div>
               </div>
             </article>
@@ -562,23 +561,23 @@ export default function ProductDraftReviewPage() {
           <div className="relative bg-white rounded-[2rem] shadow-2xl border border-[#EAE5D9] w-full max-w-md p-8">
             <h3 className="text-xl font-bold text-[#2D2620] mb-2 uppercase" style={{ fontFamily: '"Druk Wide", "Arial Black", sans-serif' }}>Return to Artisan</h3>
             <p className="text-sm font-medium text-[#766A5D] mb-8 leading-relaxed">Please provide a detailed explanation of why this product cannot be verified yet. The artisan will receive this feedback to make corrections.</p>
-            
-            <textarea 
-                rows={4}
-                value={rejectReason}
-                onChange={(e) => setRejectReason(e.target.value)}
-                placeholder="E.g. Heritage story requires more detail, region is incorrectly specified..."
-                className="w-full bg-[#FBFaf8] border border-[#F0EBE0] rounded-2xl px-5 py-4 text-sm font-medium text-[#2D2620] outline-none focus:border-rose-400 focus:bg-white transition-all resize-none mb-6"
+
+            <textarea
+              rows={4}
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              placeholder="E.g. Heritage story requires more detail, region is incorrectly specified..."
+              className="w-full bg-[#FBFaf8] border border-[#F0EBE0] rounded-2xl px-5 py-4 text-sm font-medium text-[#2D2620] outline-none focus:border-rose-400 focus:bg-white transition-all resize-none mb-6"
             />
 
             <div className="flex gap-3 justify-end">
-              <button 
+              <button
                 onClick={() => setShowRejectModal(false)}
                 className="px-6 py-3 text-xs font-bold text-[#A39B8F] uppercase tracking-widest hover:text-[#3E2723]"
               >
                 Go Back
               </button>
-              <button 
+              <button
                 onClick={() => handleReviewDecision('REJECT', rejectReason)}
                 disabled={isUpdatingStatus}
                 className="px-6 py-3 bg-rose-600 text-white rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-rose-700 shadow-lg shadow-rose-600/20 transition-all"

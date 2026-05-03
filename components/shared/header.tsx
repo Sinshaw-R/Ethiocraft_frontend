@@ -1,17 +1,16 @@
 'use client'
 
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { ShoppingCart, Search, Menu, X, UserCircle } from 'lucide-react'
+import { ShoppingCart, Menu, X, UserCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import { gsap } from 'gsap'
 import { useHeader } from '@/lib/header-context'
 import { Separator } from '@/components/ui/separator'
 import { useAuth } from '@/lib/auth-context'
 import { useCart } from '@/lib/cart-context'
 import MegaMenu from '../MegaMenu'
+import HeaderSearchPanel from '@/components/shared/HeaderSearchPanel'
 
 /** Returns the dashboard URL for the currently logged-in role. */
 function dashboardForRole(role: string | null): string {
@@ -28,7 +27,6 @@ export function Header() {
   const [isOverHero, setIsOverHero] = useState(true)
   const [isHovered, setIsHovered] = useState(false)
   const [isSearchOpen, setIsSearchOpen] = useState(false)
-  const [searchQuery, setSearchQuery] = useState('')
   const headerRef = useRef<HTMLElement>(null)
   const searchBarRef = useRef<HTMLDivElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
@@ -37,7 +35,6 @@ export function Header() {
   const closeTweenRef = useRef<gsap.core.Tween | null>(null)
   const isMountedRef = useRef(true)
   const { setIsHovered: setGlobalIsHovered } = useHeader()
-  const router = useRouter()
   const { token, role } = useAuth()
   const { cartCount } = useCart()
   const isLoggedIn = Boolean(token)
@@ -145,16 +142,6 @@ export function Header() {
       duration: 0.5,
       ease: 'power2.out',
     })
-  }
-
-  const handleSearchSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    const query = searchQuery.trim()
-    if (!query) return
-
-    router.push(`/products?q=${encodeURIComponent(query)}`)
-    handleCloseSearch()
-    setSearchQuery('')
   }
 
   useEffect(() => {
@@ -343,26 +330,19 @@ export function Header() {
               onClick={(e) => e.stopPropagation()}
             >
               <div className="container mx-auto px-4 py-4">
-                <form className="relative w-full max-w-2xl mx-auto" onSubmit={handleSearchSubmit}>
-                  <Input
-                    ref={searchInputRef}
-                    type="search"
-                    placeholder="Search products..."
-                    value={searchQuery}
-                    onChange={(event) => setSearchQuery(event.target.value)}
-                    className="pl-10 pr-10 text-[#1C1C1C] placeholder:text-muted-foreground bg-white border border-gray-300"
+                <Suspense
+                  fallback={
+                    <div
+                      className="mx-auto h-11 w-full max-w-2xl animate-pulse rounded-none border border-gray-300 bg-white"
+                      aria-hidden
+                    />
+                  }
+                >
+                  <HeaderSearchPanel
+                    onClose={handleCloseSearch}
+                    inputRef={searchInputRef}
                   />
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-[#1C1C1C]"
-                    onClick={handleCloseSearch}
-                  >
-                    <X className="w-4 h-4" />
-                  </Button>
-                </form>
+                </Suspense>
               </div>
             </div>
           </div>

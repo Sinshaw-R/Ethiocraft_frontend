@@ -159,15 +159,97 @@ export type OrderListResponse = {
 
 // ─── Query params for product list ───────────────────────────────────────────
 
+export type MarketplaceSortBy =
+  | "price_asc"
+  | "price_desc"
+  | "oldest"
+  | "newest"
+  | "rating_desc"
+  | "rating_asc"
+  | "popularity"
+  | "relevance";
+
 export type ProductListParams = {
   search?: string;
   category?: string;
   minPrice?: number;
   maxPrice?: number;
-  sortBy?: "price_asc" | "price_desc" | "oldest" | "newest";
+  sortBy?: MarketplaceSortBy;
   page?: number;
   limit?: number;
+  /** Artisan profile region(s); duplicates become repeated `region=` query keys. */
+  regions?: string[];
+  /** Product materials array must include at least one of these (OR). */
+  materials?: string[];
 };
+
+/** Filter context passed to facets (no pagination / sort). */
+export type MarketplaceFacetsParams = {
+  search?: string;
+  category?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  regions?: string[];
+  materials?: string[];
+};
+
+export type SearchSuggestionKind = "product" | "artisan" | "material";
+
+export type SearchSuggestionItem = {
+  kind: SearchSuggestionKind;
+  label: string;
+  productId?: string;
+  artisanId?: string;
+  category?: string;
+  score?: number;
+};
+
+export type SearchSuggestionsResponse = {
+  items: SearchSuggestionItem[];
+  meta: { limit: number; query?: string };
+};
+
+export type MarketplaceFacetBucket = {
+  value: string;
+  count: number;
+};
+
+export type MarketplacePriceFacet = {
+  id: string;
+  label: string;
+  minPrice: number;
+  maxPrice: number | null;
+  count: number;
+};
+
+export type MarketplaceFacetsResponse = {
+  categories: MarketplaceFacetBucket[];
+  materials: MarketplaceFacetBucket[];
+  regions: MarketplaceFacetBucket[];
+  priceRanges: MarketplacePriceFacet[];
+};
+
+function appendMarketplaceFilterParams(
+  url: URL,
+  params: Pick<
+    MarketplaceFacetsParams,
+    "search" | "category" | "minPrice" | "maxPrice"
+  > & {
+    regions?: string[];
+    materials?: string[];
+  }
+) {
+  if (params.search) url.searchParams.set("search", params.search);
+  if (params.category) url.searchParams.set("category", params.category);
+  if (params.minPrice !== undefined)
+    url.searchParams.set("minPrice", String(params.minPrice));
+  if (params.maxPrice !== undefined)
+    url.searchParams.set("maxPrice", String(params.maxPrice));
+  params.regions?.forEach((region) => url.searchParams.append("region", region));
+  params.materials?.forEach((material) =>
+    url.searchParams.append("material", material),
+  );
+}
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -191,12 +273,7 @@ export async function fetchProducts(
 ): Promise<ProductListResponse> {
   const url = new URL(`${BASE_URL}/marketplace/products`);
 
-  if (params.search) url.searchParams.set("search", params.search);
-  if (params.category) url.searchParams.set("category", params.category);
-  if (params.minPrice !== undefined)
-    url.searchParams.set("minPrice", String(params.minPrice));
-  if (params.maxPrice !== undefined)
-    url.searchParams.set("maxPrice", String(params.maxPrice));
+  appendMarketplaceFilterParams(url, params);
   if (params.sortBy) url.searchParams.set("sortBy", params.sortBy);
   if (params.page) url.searchParams.set("page", String(params.page));
   if (params.limit) url.searchParams.set("limit", String(params.limit));
@@ -210,6 +287,42 @@ export async function fetchProducts(
   const json = await res.json();
   // Backend returns: { message: string, data: { items, meta } }
   return json.data as ProductListResponse;
+}
+
+/** Predictive marketplace search suggestions (2+ chars on server). */
+export async function fetchSearchSuggestions(params: {
+  q: string;
+  limit?: number;
+}): Promise<SearchSuggestionsResponse> {
+  const url = new URL(`${BASE_URL}/marketplace/products/suggestions`);
+  if (params.q) url.searchParams.set("q", params.q.trim());
+  if (params.limit) url.searchParams.set("limit", String(params.limit));
+
+  const res = await fetch(url.toString(), { cache: "no-store" });
+
+  if (!res.ok) {
+    throw new Error(`Failed to fetch suggestions: ${res.status} ${res.statusText}`);
+  }
+
+  const json = await res.json();
+  return json.data as SearchSuggestionsResponse;
+}
+
+/** Faceted counts for the current marketplace filter context (excludes conflicting facet groups server-side). */
+export async function fetchMarketplaceFacets(
+  params: MarketplaceFacetsParams = {}
+): Promise<MarketplaceFacetsResponse> {
+  const url = new URL(`${BASE_URL}/marketplace/products/facets`);
+  appendMarketplaceFilterParams(url, params);
+
+  const res = await fetch(url.toString(), { cache: "no-store" });
+
+  if (!res.ok) {
+    throw new Error(`Failed to fetch facets: ${res.status} ${res.statusText}`);
+  }
+
+  const json = await res.json();
+  return json.data as MarketplaceFacetsResponse;
 }
 
 /**
